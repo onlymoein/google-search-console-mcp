@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+build/
+*.egg-info/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.firecrawl/
+
+# OS and editors
+.DS_Store
+.idea/
+.vscode/
+
+# Credentials: never commit Google keys, OAuth clients or saved logins
+.env
+.env.*
+!.env.example
+*service-account*.json
+client_secret*.json
+credentials*.json
+token*.json

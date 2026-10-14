@@ -1,0 +1,81 @@
+[project]
+name = "open-gsc-mcp"
+version = "0.1.0"
+description = "Local MCP server for the Google Search Console API: search analytics, URL inspection, sitemaps and sites, with guards for the API's known quirks."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Moein Saharkhiz" }]
+requires-python = ">=3.11"
+keywords = ["mcp", "model-context-protocol", "google-search-console", "seo", "search-analytics"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+    "Typing :: Typed",
+]
+dependencies = [
+    "anyio>=4.9",
+    "google-auth>=2.40",
+    "google-auth-oauthlib>=1.2",
+    "httpx2>=2.10",
+    "mcp>=2.3,<3",
+    "platformdirs>=4.3",
+    "pydantic>=2.12",
+    "requests>=2.32",
+    "tzdata>=2024.1; sys_platform == 'win32'",
+]
+
+[project.urls]
+Homepage = "https://github.com/onlymoein/google-search-console-mcp"
+Issues = "https://github.com/onlymoein/google-search-console-mcp/issues"
+Changelog = "https://github.com/onlymoein/google-search-console-mcp/blob/main/CHANGELOG.md"
+
+[project.scripts]
+open-gsc-mcp = "gsc_mcp.cli:main"
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.400",
+    "pytest>=8.4",
+    "ruff>=0.13",
+]
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "gsc_mcp"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# No TC (type-checking import) rules: the MCP SDK reads tool signatures at runtime, so
+# types used in tool annotations must stay real imports.
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "ASYNC", "S", "PT"]
+ignore = [
+    "S101", # assert is fine in tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "ASYNC240"]
+
+[tool.pyright]
+include = ["src", "tests"]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "-m", "not live"]
+markers = ["live: hits the real Search Console API; needs credentials (opt-in)"]
