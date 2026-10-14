@@ -1,0 +1,49 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never paste credentials, tokens, client secrets or service account keys. Replace your
+        property and URLs with placeholders if you prefer not to share them.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you asked or ran, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Tool result or error
+      description: The tool's error message, or the `request` and `notes` from its result.
+      render: json
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `uvx open-gsc-mcp --version`.
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: MCP client
+      placeholder: Claude Code 2.x, Claude Desktop, Cursor...
+    validations:
+      required: true
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Authentication
+      options:
+        - OAuth login
+        - Service account
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system

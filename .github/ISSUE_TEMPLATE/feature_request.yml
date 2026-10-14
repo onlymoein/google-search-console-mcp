@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest a tool, option or improvement.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The question you want answered or the task you want done.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How the server could help. If it needs data, which Search Console API method provides it?
+  - type: checkboxes
+    id: api
+    attributes:
+      label: API check
+      options:
+        - label: The data is available through the Search Console API (some reports exist only in the web interface).

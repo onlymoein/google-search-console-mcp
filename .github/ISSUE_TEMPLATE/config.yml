@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/onlymoein/google-search-console-mcp/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue.
+  - name: Search Console API documentation
+    url: https://developers.google.com/webmaster-tools/v1/api_reference_index
+    about: What the API itself can and cannot do.

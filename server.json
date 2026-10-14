@@ -1,0 +1,40 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.onlymoein/google-search-console-mcp",
+  "title": "Google Search Console",
+  "description": "Search Console analytics, hourly data, URL inspection and sitemaps, with guards for API quirks.",
+  "repository": {
+    "url": "https://github.com/onlymoein/google-search-console-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "open-gsc-mcp",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "GSC_SERVICE_ACCOUNT_FILE",
+          "description": "Absolute path to a service account JSON key. Leave unset to use the OAuth login from `open-gsc-mcp auth login`.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "filepath"
+        },
+        {
+          "name": "GSC_ENABLE_WRITES",
+          "description": "Set to 1 to enable submit/delete sitemap and add/delete site tools.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "boolean",
+          "default": "0"
+        }
+      ]
+    }
+  ]
+}
