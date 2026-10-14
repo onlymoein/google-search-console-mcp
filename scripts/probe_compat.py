@@ -142,6 +142,43 @@ def cases(days_ago: Any) -> list[Case]:
             "empty",
             q(**query, dimensionFilterGroups=[f("query", "includingRegex", "(")]),
         ),
+        Case("discover by device", "reject", q(type="discover", dimensions=["device"])),
+        Case(
+            "discover device filter",
+            "reject",
+            q(
+                type="discover",
+                dimensions=["date"],
+                dimensionFilterGroups=[f("device", "equals", "MOBILE")],
+            ),
+        ),
+        Case("googleNews by device", "accept", q(type="googleNews", dimensions=["device"])),
+        Case(
+            "discover byProperty",
+            "reject",
+            q(type="discover", dimensions=["date"], aggregationType="byProperty"),
+        ),
+        Case(
+            "googleNews byProperty",
+            "reject",
+            q(type="googleNews", dimensions=["date"], aggregationType="byProperty"),
+        ),
+        Case(
+            "appearance lowercase name",
+            "reject",
+            q(
+                dimensions=["query"],
+                dimensionFilterGroups=[f("searchAppearance", "equals", "video")],
+            ),
+        ),
+        Case(
+            "appearance partial contains",
+            "reject",
+            q(
+                dimensions=["query"],
+                dimensionFilterGroups=[f("searchAppearance", "contains", "VID")],
+            ),
+        ),
         Case("RE2 end of text \\z", "accept", regex("a.*\\z")),
         Case("RE2 quoted \\Q..\\E", "accept", regex("\\Qa\\E")),
         Case("RE2 flag mid-pattern", "accept", regex("a(?i)R")),

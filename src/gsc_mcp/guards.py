@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 MAX_ROW_LIMIT = 25_000
 NO_QUERY_TYPES = frozenset({"discover", "googleNews"})
+NO_DEVICE_TYPES = frozenset({"discover"})
 REGEX_OPERATORS = frozenset({"includingRegex", "excludingRegex"})
 NEGATIVE_OPERATORS = frozenset({"notEquals", "notContains"})
 DEVICES = frozenset({"DESKTOP", "MOBILE", "TABLET"})
@@ -184,6 +185,10 @@ def check_dimensions(
             "list_search_appearances to see which appearances exist, then query with a "
             "searchAppearance filter and the other dimensions you need."
         )
+    if "device" in dims and search_type in NO_DEVICE_TYPES:
+        raise GuardError(
+            "The Discover report has no device breakdown, so 'device' cannot be a dimension."
+        )
     if "query" in dims and search_type in NO_QUERY_TYPES:
         raise GuardError(
             f"The {search_type} report has no query data, so 'query' cannot be a dimension. "
@@ -208,14 +213,28 @@ def check_filters(filters: Sequence[DimensionFilter], *, search_type: str) -> li
             raise GuardError(
                 f"The {search_type} report has no query data, so it cannot be filtered by query."
             )
-        if f.operator in REGEX_OPERATORS:
-            check_re2(expression)
-        if f.dimension == "searchAppearance" and f.operator in NEGATIVE_OPERATORS:
+        if f.dimension == "device" and search_type in NO_DEVICE_TYPES:
             raise GuardError(
-                f"{f.operator} on searchAppearance is broken in Google's API: it returns only "
-                "the rows you meant to exclude (a confirmed bug). Query the appearances you "
-                "want with equals instead, or query without the filter and subtract."
+                "The Discover report has no device data, so it cannot be filtered by device."
             )
+        if f.dimension == "searchAppearance":
+            if f.operator in NEGATIVE_OPERATORS:
+                raise GuardError(
+                    f"{f.operator} on searchAppearance is broken in Google's API: it returns "
+                    "only the rows you meant to exclude (a confirmed bug). Query the "
+                    "appearances you want with equals instead, or query without the filter "
+                    "and subtract."
+                )
+            if f.operator != "equals":
+                raise GuardError(
+                    "searchAppearance filters need equals and an exact appearance name such "
+                    "as VIDEO (Google rejects partial names and patterns). Call "
+                    "list_search_appearances to see the names."
+                )
+            # Google's appearance names are uppercase and matched exactly.
+            expression = expression.upper()
+        elif f.operator in REGEX_OPERATORS:
+            check_re2(expression)
         if f.dimension == "country" and f.operator in ("equals", "notEquals"):
             if not _COUNTRY.match(expression):
                 raise GuardError(
@@ -243,6 +262,11 @@ def check_aggregation(
     search_type: str,
 ) -> None:
     uses_page = "page" in dimensions or any(f.dimension == "page" for f in filters)
+    if aggregation_type == "byProperty" and search_type in NO_QUERY_TYPES:
+        raise GuardError(
+            f"The {search_type} report is always aggregated by page; byProperty is not "
+            "available. Use 'auto'."
+        )
     if aggregation_type == "byProperty" and uses_page:
         # docs: "If you group or filter by page, you cannot aggregate by property."
         raise GuardError(

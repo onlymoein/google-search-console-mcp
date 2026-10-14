@@ -101,6 +101,36 @@ REJECTED: list[tuple[str, dict[str, Any], str]] = [
     ("bad date", {"start_date": "10/01/2026"}, "YYYY-MM-DD"),
     ("before history", {"start_date": "2024-01-01", "end_date": "2024-02-01"}, "nothing exists"),
     ("row limit", {"row_limit": 25_001}, "row_limit"),
+    ("discover by device", {"search_type": "discover", "dimensions": ["device"]}, "no device"),
+    (
+        "discover device filter",
+        {
+            "search_type": "discover",
+            "dimensions": ["page"],
+            "filters": [flt("device", "equals", "MOBILE")],
+        },
+        "no device",
+    ),
+    (
+        "discover byProperty",
+        {"search_type": "discover", "dimensions": ["date"], "aggregation_type": "byProperty"},
+        "by page",
+    ),
+    (
+        "googleNews byProperty",
+        {"search_type": "googleNews", "dimensions": ["date"], "aggregation_type": "byProperty"},
+        "by page",
+    ),
+    (
+        "appearance contains",
+        {"filters": [flt("searchAppearance", "contains", "VID")]},
+        "exact appearance name",
+    ),
+    (
+        "appearance regex",
+        {"filters": [flt("searchAppearance", "includingRegex", "VID.*")]},
+        "exact appearance name",
+    ),
     ("negative start row", {"start_row": -1}, "start_row"),
 ]
 
@@ -117,6 +147,7 @@ ACCEPTED: list[tuple[str, dict[str, Any]]] = [
     ("appearance alone", {"dimensions": ["searchAppearance"]}),
     ("appearance filter + query", {"filters": [flt("searchAppearance", "equals", "VIDEO")]}),
     ("discover by page", {"search_type": "discover", "dimensions": ["page"]}),
+    ("googleNews by device", {"search_type": "googleNews", "dimensions": ["device"]}),
     (
         "regex on country",
         {"dimensions": ["country"], "filters": [flt("country", "includingRegex", "^u")]},
@@ -224,3 +255,8 @@ def test_python_only_syntax_is_rejected(pattern: str, message: str) -> None:
 def test_rejects_blank_filter_expression() -> None:
     with pytest.raises(GuardError, match="empty expression"):
         query(filters=[flt("query", "contains", "   ")])
+
+
+def test_appearance_names_are_uppercased() -> None:
+    q = query(filters=[flt("searchAppearance", "equals", "review_snippet")])
+    assert q.filters[0].expression == "REVIEW_SNIPPET"
