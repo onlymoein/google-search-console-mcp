@@ -1,8 +1,8 @@
 # Google Search Console MCP Server
 
 [![CI](https://github.com/onlymoein/google-search-console-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/onlymoein/google-search-console-mcp/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/open-gsc-mcp)](https://pypi.org/project/open-gsc-mcp/)
-[![Python](https://img.shields.io/pypi/pyversions/open-gsc-mcp)](https://pypi.org/project/open-gsc-mcp/)
+[![PyPI](https://img.shields.io/pypi/v/open-gsc-mcp?label=PyPI)](https://pypi.org/project/open-gsc-mcp/)
+[![Python](https://img.shields.io/pypi/pyversions/open-gsc-mcp?label=Python)](https://pypi.org/project/open-gsc-mcp/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 <!-- mcp-name: io.github.onlymoein/google-search-console-mcp -->
