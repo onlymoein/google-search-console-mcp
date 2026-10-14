@@ -10,15 +10,16 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from gsc_mcp.dates import parse_date, today_pacific
-from gsc_mcp.guards import NO_QUERY_TYPES
-from gsc_mcp.models import AnalyticsResult, Row
+from gsc_mcp.guards import NO_QUERY_TYPES, build_query
+from gsc_mcp.models import AnalyticsResult, DataState, Row
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
     from gsc_mcp.client import SearchConsoleClient
     from gsc_mcp.config import Settings
     from gsc_mcp.guards import AnalyticsQuery
+    from gsc_mcp.models import DimensionFilter
     from gsc_mcp.sites import Resolution, SiteResolver
 
 
@@ -56,6 +57,13 @@ EndDate = Annotated[
     str | None,
     Field(description="Last day (inclusive), YYYY-MM-DD in Pacific Time. Defaults to today."),
 ]
+DataStateParam = Annotated[
+    DataState,
+    Field(
+        description="'all' includes fresh data that may still change and matches the Search "
+        "Console UI; 'final' is finalized data only (lags 2-3 days)."
+    ),
+]
 RowLimit = Annotated[int, Field(ge=1, le=25_000, description="Rows to return (1-25,000).")]
 StartRow = Annotated[int, Field(ge=0, description="Zero-based row offset, for paging.")]
 
@@ -70,6 +78,44 @@ def date_defaults(
     if start_date:
         return start_date, end.isoformat()
     return (end - timedelta(days=days - 1)).isoformat(), end.isoformat()
+
+
+async def run_analytics(
+    deps: Deps,
+    *,
+    site_url: str,
+    start_date: str | None,
+    end_date: str | None,
+    dimensions: Sequence[str],
+    search_type: str,
+    filters: Sequence[DimensionFilter] = (),
+    data_state: str = "all",
+    aggregation_type: str = "auto",
+    row_limit: int = 100,
+    start_row: int = 0,
+    hourly: bool = False,
+    default_days: int = DEFAULT_DAYS,
+    extra_notes: list[str] | None = None,
+) -> AnalyticsResult:
+    """Validate, resolve the site, query Search Analytics and shape the result."""
+    today = deps.today()
+    start, end = date_defaults(start_date, end_date, today, days=default_days)
+    query = build_query(
+        start_date=start,
+        end_date=end,
+        today=today,
+        dimensions=dimensions,
+        search_type=search_type,
+        data_state=data_state,
+        aggregation_type=aggregation_type,
+        filters=filters,
+        row_limit=row_limit,
+        start_row=start_row,
+        hourly=hourly,
+    )
+    resolution = await deps.sites.resolve(site_url)
+    data = await deps.client.query_search_analytics(resolution.site_url, query.body())
+    return analytics_result(resolution, query, data, today=today, extra_notes=extra_notes)
 
 
 def format_row(dimensions: tuple[str, ...], row: dict[str, Any], search_type: str) -> Row:

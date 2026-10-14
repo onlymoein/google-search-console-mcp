@@ -6,26 +6,18 @@ from typing import TYPE_CHECKING, Annotated
 
 from pydantic import Field
 
-from gsc_mcp.guards import build_query
-from gsc_mcp.models import (
-    AggregationType,
-    AnalyticsResult,
-    DataState,
-    Dimension,
-    DimensionFilter,
-    SearchType,
-)
+from gsc_mcp.models import AggregationType, AnalyticsResult, Dimension, DimensionFilter, SearchType
 from gsc_mcp.tools._common import (
     LARGE_RESULT,
     READ_ONLY,
+    DataStateParam,
     Deps,
     EndDate,
     RowLimit,
     SiteUrl,
     StartDate,
     StartRow,
-    analytics_result,
-    date_defaults,
+    run_analytics,
 )
 
 if TYPE_CHECKING:
@@ -43,6 +35,13 @@ Filters = Annotated[
     list[DimensionFilter] | None,
     Field(description="Filters, combined with AND."),
 ]
+Aggregation = Annotated[
+    AggregationType,
+    Field(
+        description="'auto' is right almost always. byProperty cannot be used with page "
+        "grouping or filters, nor with Discover or Google News."
+    ),
+]
 
 
 def register(mcp: MCPServer, deps: Deps) -> None:
@@ -57,40 +56,25 @@ def register(mcp: MCPServer, deps: Deps) -> None:
             Field(description="web, image, video, news (the News tab), discover or googleNews."),
         ] = "web",
         filters: Filters = None,
-        data_state: Annotated[
-            DataState,
-            Field(
-                description="'all' includes fresh data that may still change and matches the "
-                "Search Console UI; 'final' is finalized data only (lags 2-3 days)."
-            ),
-        ] = "all",
-        aggregation_type: Annotated[
-            AggregationType,
-            Field(
-                description="'auto' is right almost always. byProperty cannot be used with "
-                "page grouping or filters."
-            ),
-        ] = "auto",
+        data_state: DataStateParam = "all",
+        aggregation_type: Aggregation = "auto",
         row_limit: RowLimit = 100,
         start_row: StartRow = 0,
     ) -> AnalyticsResult:
         """Clicks, impressions, CTR and average position from the Performance report, grouped
         by dimensions and filtered. Rows are sorted by clicks. Invalid combinations are
-        rejected with an explanation before Google is called."""
-        today = deps.today()
-        start, end = date_defaults(start_date, end_date, today)
-        query = build_query(
-            start_date=start,
-            end_date=end,
-            today=today,
+        rejected with an explanation before Google is called. For one surface at a time,
+        the query_discover/image/video/news_analytics tools offer only what it supports."""
+        return await run_analytics(
+            deps,
+            site_url=site_url,
+            start_date=start_date,
+            end_date=end_date,
             dimensions=["query"] if dimensions is None else dimensions,
             search_type=search_type,
+            filters=filters or [],
             data_state=data_state,
             aggregation_type=aggregation_type,
-            filters=filters or [],
             row_limit=row_limit,
             start_row=start_row,
         )
-        resolution = await deps.sites.resolve(site_url)
-        data = await deps.client.query_search_analytics(resolution.site_url, query.body())
-        return analytics_result(resolution, query, data, today=today)

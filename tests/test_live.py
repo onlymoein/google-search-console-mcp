@@ -66,3 +66,19 @@ async def test_compare(live: Client, site: str) -> None:
 
 async def test_sitemaps(live: Client, site: str) -> None:
     await ok(live, "list_sitemaps", site_url=site)
+
+
+@pytest.mark.parametrize(
+    ("tool", "arguments"),
+    [
+        ("query_discover_analytics", {}),
+        ("query_image_analytics", {}),
+        ("query_video_analytics", {}),
+        ("query_news_analytics", {}),
+        ("query_news_analytics", {"source": "news_tab"}),
+        ("list_search_appearances", {}),
+    ],
+)
+async def test_surface_tools(live: Client, site: str, tool: str, arguments: dict[str, Any]) -> None:
+    result = await ok(live, tool, site_url=site, **arguments)
+    assert result["site_url"] == site

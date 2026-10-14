@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 SearchType = Literal["web", "image", "video", "news", "discover", "googleNews"]
 Dimension = Literal["date", "query", "page", "country", "device", "searchAppearance"]
 HourlyDimension = Literal["query", "page", "country", "device"]
+BreakdownDimension = Literal["date", "query", "page", "country", "device"]
+DiscoverDimension = Literal["date", "page", "country"]
 FilterDimension = Literal["query", "page", "country", "device", "searchAppearance"]
 Operator = Literal[
     "equals", "notEquals", "contains", "notContains", "includingRegex", "excludingRegex"
@@ -19,10 +21,7 @@ AggregationType = Literal["auto", "byPage", "byProperty", "byNewsShowcasePanel"]
 Row = dict[str, str | int | float]
 
 
-class DimensionFilter(BaseModel):
-    """One filter. Multiple filters are combined with AND (the only grouping Google supports)."""
-
-    dimension: FilterDimension
+class _FilterFields(BaseModel):
     operator: Operator = "equals"
     expression: Annotated[
         str,
@@ -30,11 +29,29 @@ class DimensionFilter(BaseModel):
             min_length=1,
             description=(
                 "Value to match. country: ISO 3166-1 alpha-3 code such as 'usa'. "
-                "device: DESKTOP, MOBILE or TABLET. Regex operators use RE2 syntax "
+                "device: DESKTOP, MOBILE or TABLET. searchAppearance: an exact name from "
+                "list_search_appearances, with equals. Regex operators use RE2 syntax "
                 "(no lookarounds or backreferences)."
             ),
         ),
     ]
+
+
+class DimensionFilter(_FilterFields):
+    """One filter. Multiple filters are combined with AND (the only grouping Google supports)."""
+
+    dimension: FilterDimension
+
+
+class DiscoverFilter(_FilterFields):
+    """A Discover filter. Discover has no query or device data to filter on."""
+
+    dimension: Literal["page", "country", "searchAppearance"]
+
+    def general(self) -> DimensionFilter:
+        return DimensionFilter(
+            dimension=self.dimension, operator=self.operator, expression=self.expression
+        )
 
 
 class SiteInfo(BaseModel):

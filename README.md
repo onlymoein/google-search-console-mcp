@@ -31,7 +31,8 @@ It runs on your machine, talks only to Google, and stores nothing but your own l
   fields, and every analytics result includes the exact request sent to Google.
 - **Full API coverage**: search analytics (all search types, filters, data states,
   pagination), hourly data, search appearances, URL inspection (single and concurrent
-  batch), sitemaps and properties.
+  batch), sitemaps and properties, plus a dedicated tool for each search surface (Discover,
+  Images, video, news) that only accepts what that surface supports.
 - **Built on the current stack**: MCP Python SDK 2.x (protocol 2026-07-28 and older clients
   alike) and an async client, so batch inspection runs concurrently.
 
@@ -120,7 +121,12 @@ When `GSC_SERVICE_ACCOUNT_FILE` is set it takes precedence over any OAuth login.
 | `get_site` | One property's type and permission level. |
 | `query_search_analytics` | Clicks, impressions, CTR and position by query, page, country, device, date or search appearance; any search type; filters; `final` or `all` data; paging. |
 | `query_hourly_analytics` | The same, by hour, for the last ~10 days. Reports where incomplete hours start. |
-| `list_search_appearances` | Rich results and other result features the property had. Step one of Google's two-step appearance query. |
+| `query_discover_analytics` | Google Discover by page, country or date. No query, device or position, so the tool doesn't offer them. |
+| `query_image_analytics` | Google Images: queries, pages and positions within image results. |
+| `query_video_analytics` | The Videos tab of Google Search. |
+| `query_news_analytics` | Google News (news.google.com and the app), or the News tab in Search with `source="news_tab"`. |
+| `list_search_appearances` | Rich results and other result features the property had: step one of Google's two-step appearance query. |
+| `query_search_appearance` | Step two: one appearance broken down by query, page, country, device or date. |
 | `compare_periods` | Two equal-length periods: totals and per-key changes, absolute and percent. |
 | `inspect_url` | Index status, coverage, canonical (Google's versus yours), crawl, robots.txt and rich results for one URL. |
 | `batch_inspect_urls` | Up to 50 URLs concurrently, with progress, per-URL errors and a verdict summary. Stops cleanly when the quota runs out. |
@@ -161,11 +167,12 @@ uvx open-gsc-mcp auth logout       # revoke and delete the saved login
 |---|---|
 | `searchAppearance` cannot be grouped with any other dimension (400). | Rejects it and points to the two-step pattern. |
 | `notEquals`/`notContains` on `searchAppearance` return the rows you meant to exclude (a confirmed Google bug). | Rejects them with an explanation. |
-| Discover and Google News have no query data (400) and no position. | Rejects `query`; leaves position out of rows. |
+| Discover and Google News have no query data (400) and no position; Discover has no device data (400). | Rejects `query` (and `device` for Discover); leaves position out of rows. The surface tools don't even offer them. |
+| `searchAppearance` filters must be an exact, uppercase appearance name for that search type (anything else: 400). | Requires `equals`, uppercases the name, and offers a dedicated step-two tool. |
 | `hour` needs `dataState=hourly_all` and cannot be combined with `date` (400). | A dedicated hourly tool sets both. |
 | Hourly data older than ~10 days, a future end date, an invalid or non-RE2 regex, a two-letter country code or an unknown device all return **zero rows, no error**. | Rejects each before the call. |
 | Dates are Pacific Time; 16 months of history. | Uses Pacific Time; clamps the start date and says so. |
-| `byProperty` aggregation fails with page grouping or filters (400). | Rejects it. |
+| `byProperty` aggregation fails with page grouping or filters, and for Discover and Google News (400). | Rejects it. |
 | Recent data is incomplete. | Reports `first_incomplete_date` / `first_incomplete_hour`; comparisons default to `final` data. |
 | At most 25,000 rows per request, top rows only. | Defaults to 100 rows and returns `next_start_row` for paging. |
 | URL Inspection: 2,000 per day and 600 per minute per property. | Batches run 5 at a time and stop cleanly on quota errors. |

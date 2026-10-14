@@ -23,6 +23,11 @@ READ_TOOLS = {
     "query_search_analytics",
     "query_hourly_analytics",
     "list_search_appearances",
+    "query_search_appearance",
+    "query_discover_analytics",
+    "query_image_analytics",
+    "query_video_analytics",
+    "query_news_analytics",
     "compare_periods",
     "inspect_url",
     "batch_inspect_urls",
@@ -259,7 +264,7 @@ async def test_list_search_appearances(api: ApiStub, client: Client) -> None:
     body = api.bodies("searchAnalytics/query")[0]
     assert (body["dimensions"], body["rowLimit"]) == (["searchAppearance"], 1000)
     assert result["rows"][0]["searchAppearance"] == "VIDEO"
-    assert any("equals filter" in n for n in result["notes"])
+    assert any("query_search_appearance" in n for n in result["notes"])
 
 
 async def test_compare_periods(api: ApiStub, client: Client) -> None:
@@ -524,3 +529,96 @@ async def test_date_errors_name_the_field_that_was_given(client: Client) -> None
         client, "compare_periods", site_url="sc-domain:example.com", current_start="2026-10-13"
     )
     assert "current_end defaults to 2026-10-11" in message
+
+
+# --- Search appearance, step two -------------------------------------------------------
+
+
+async def test_query_search_appearance(api: ApiStub, client: Client) -> None:
+    api.on("POST", QUERY, {"rows": []})
+    await call(
+        client,
+        "query_search_appearance",
+        site_url="sc-domain:example.com",
+        appearance="review_snippet",
+        dimensions=["page"],
+        filters=[{"dimension": "country", "operator": "equals", "expression": "usa"}],
+    )
+    body = api.bodies("searchAnalytics/query")[0]
+    assert body["dimensions"] == ["page"]
+    assert body["dimensionFilterGroups"][0]["filters"] == [
+        {"dimension": "searchAppearance", "operator": "equals", "expression": "REVIEW_SNIPPET"},
+        {"dimension": "country", "operator": "equals", "expression": "usa"},
+    ]
+
+
+async def test_query_search_appearance_defaults_to_page_for_discover(
+    api: ApiStub, client: Client
+) -> None:
+    api.on("POST", QUERY, {"rows": []})
+    await call(
+        client,
+        "query_search_appearance",
+        site_url="sc-domain:example.com",
+        appearance="NEWS_SHOWCASE",
+        search_type="discover",
+    )
+    assert api.bodies("searchAnalytics/query")[0]["dimensions"] == ["page"]
+
+
+async def test_appearance_goes_in_its_own_parameter(client: Client) -> None:
+    message = await call_error(
+        client,
+        "query_search_appearance",
+        site_url="sc-domain:example.com",
+        appearance="VIDEO",
+        filters=[{"dimension": "searchAppearance", "operator": "equals", "expression": "X"}],
+    )
+    assert "as `appearance`" in message
+
+
+# --- Surface tools -----------------------------------------------------------------------
+
+
+async def test_surface_tools_send_their_search_type(api: ApiStub, client: Client) -> None:
+    api.on("POST", QUERY, {"rows": []})
+    cases: list[tuple[str, dict[str, str], str, list[str]]] = [
+        ("query_discover_analytics", {}, "discover", ["page"]),
+        ("query_image_analytics", {}, "image", ["query"]),
+        ("query_video_analytics", {}, "video", ["query"]),
+        ("query_news_analytics", {}, "googleNews", ["page"]),
+        ("query_news_analytics", {"source": "news_tab"}, "news", ["query"]),
+    ]
+    for name, extra, search_type, dimensions in cases:
+        await call(client, name, site_url="sc-domain:example.com", **extra)
+        body = api.bodies("searchAnalytics/query")[-1]
+        assert (body["type"], body["dimensions"]) == (search_type, dimensions), name
+
+
+async def test_discover_schema_offers_only_what_discover_supports(client: Client) -> None:
+    tools = {t.name: t for t in (await client.list_tools()).tools}
+    schema = tools["query_discover_analytics"].input_schema
+    dims = schema["properties"]["dimensions"]["anyOf"][0]["items"]["enum"]
+    assert dims == ["date", "page", "country"]
+    filter_dims = schema["$defs"]["DiscoverFilter"]["properties"]["dimension"]["enum"]
+    assert filter_dims == ["page", "country", "searchAppearance"]
+    assert "byProperty" not in str(schema["properties"]["aggregation_type"])
+
+
+async def test_discover_rejects_query_and_device_at_the_schema(client: Client) -> None:
+    for dimensions in (["query"], ["device"]):
+        message = await call_error(
+            client,
+            "query_discover_analytics",
+            site_url="sc-domain:example.com",
+            dimensions=dimensions,
+        )
+        assert "dimensions" in message
+
+
+async def test_google_news_has_no_query(api: ApiStub, client: Client) -> None:
+    message = await call_error(
+        client, "query_news_analytics", site_url="sc-domain:example.com", dimensions=["query"]
+    )
+    assert "no query data" in message
+    assert not api.bodies("searchAnalytics/query")

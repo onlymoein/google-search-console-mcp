@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Annotated
 from pydantic import Field
 
 from gsc_mcp.dates import HOURLY_DAYS
-from gsc_mcp.guards import build_query
 from gsc_mcp.models import AnalyticsResult, DimensionFilter, HourlyDimension, SearchType
 from gsc_mcp.tools._common import (
     LARGE_RESULT,
@@ -16,8 +15,7 @@ from gsc_mcp.tools._common import (
     RowLimit,
     SiteUrl,
     StartRow,
-    analytics_result,
-    date_defaults,
+    run_analytics,
 )
 
 if TYPE_CHECKING:
@@ -55,20 +53,17 @@ def register(mcp: MCPServer, deps: Deps) -> None:
         """Search performance broken down by hour (Pacific Time) for the last ~10 days. Use it
         to spot same-day spikes or compare today with the same day last week. The most
         recent hours are incomplete; first_incomplete_hour says where that starts."""
-        today = deps.today()
-        start, end = date_defaults(start_date, end_date, today, days=DEFAULT_HOURLY_DAYS)
-        query = build_query(
-            start_date=start,
-            end_date=end,
-            today=today,
+        return await run_analytics(
+            deps,
+            site_url=site_url,
+            start_date=start_date,
+            end_date=end_date,
             dimensions=dimensions or [],
             search_type=search_type,
-            data_state="hourly_all",
             filters=filters or [],
+            data_state="hourly_all",
             row_limit=row_limit,
             start_row=start_row,
             hourly=True,
+            default_days=DEFAULT_HOURLY_DAYS,
         )
-        resolution = await deps.sites.resolve(site_url)
-        data = await deps.client.query_search_analytics(resolution.site_url, query.body())
-        return analytics_result(resolution, query, data, today=today)
