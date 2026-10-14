@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-14
+
 ### Added
 
 - Surface tools that only accept what each surface supports: `query_discover_analytics`,
@@ -42,5 +44,6 @@ First release.
   with read-only scope unless writes are enabled.
 - Workflow prompts: weekly report, indexing audit, content opportunities.
 
-[Unreleased]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/onlymoein/google-search-console-mcp/releases/tag/v1.0.0
