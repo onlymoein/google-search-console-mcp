@@ -33,6 +33,7 @@ def test_reads_every_variable(tmp_path: Path) -> None:
 
 def test_expands_home_and_variables(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))  # what expanduser reads on Windows
     monkeypatch.setenv("KEYS", str(tmp_path / "keys"))
     settings = Settings.from_env(
         {"GSC_TOKEN_FILE": "~/token.json", "GSC_SERVICE_ACCOUNT_FILE": "$KEYS/sa.json"}
