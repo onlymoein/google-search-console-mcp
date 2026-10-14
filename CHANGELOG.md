@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-14
+
+First release.
+
 ### Added
 
 - Search analytics for every search type (web, image, video, news, Discover, Google News)
@@ -22,3 +26,6 @@ All notable changes to this project are documented here. The format follows
 - OAuth desktop login (`auth login`, `auth status`, `auth logout`) and service accounts,
   with read-only scope unless writes are enabled.
 - Workflow prompts: weekly report, indexing audit, content opportunities.
+
+[Unreleased]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/onlymoein/google-search-console-mcp/releases/tag/v1.0.0

@@ -1,6 +1,6 @@
 [project]
 name = "open-gsc-mcp"
-version = "0.1.0"
+version = "1.0.0"
 description = "Local MCP server for the Google Search Console API: search analytics, URL inspection, sitemaps and sites, with guards for the API's known quirks."
 readme = "README.md"
 license = "MIT"
@@ -9,7 +9,7 @@ authors = [{ name = "Moein Saharkhiz" }]
 requires-python = ">=3.11"
 keywords = ["mcp", "model-context-protocol", "google-search-console", "seo", "search-analytics"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
