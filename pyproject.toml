@@ -1,6 +1,6 @@
 [project]
 name = "open-gsc-mcp"
-version = "1.2.0"
+version = "1.3.0"
 description = "Local MCP server for the Google Search Console API: search analytics, URL inspection, sitemaps and sites, with guards for the API's known quirks."
 readme = "README.md"
 license = "MIT"

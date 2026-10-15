@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-15
+
 ### Added
 
 - `explain_change`: why traffic rose or fell between two periods. It splits the change by
@@ -118,7 +120,8 @@ First release.
   with read-only scope unless writes are enabled.
 - Workflow prompts: weekly report, indexing audit, content opportunities.
 
-[Unreleased]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/onlymoein/google-search-console-mcp/releases/tag/v1.0.0
