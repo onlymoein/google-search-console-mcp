@@ -56,7 +56,7 @@ with access to at least one Search Console property.
 2. **Sign in** (opens a browser once; the server itself never does):
 
    ```sh
-   uvx open-gsc-mcp auth login --client-file ~/.config/open-gsc-mcp/client_secret.json
+   uvx open-gsc-mcp@latest auth login --client-file ~/.config/open-gsc-mcp/client_secret.json
    ```
 
    Google shows "Google hasn't verified this app" because the app is yours and unreviewed;
@@ -71,7 +71,7 @@ with access to at least one Search Console property.
 **Claude Code**
 
 ```sh
-claude mcp add --scope user gsc -- uvx open-gsc-mcp
+claude mcp add --scope user gsc -- uvx open-gsc-mcp@latest
 ```
 
 **Claude Desktop**: edit `claude_desktop_config.json`
@@ -82,7 +82,7 @@ claude mcp add --scope user gsc -- uvx open-gsc-mcp
   "mcpServers": {
     "gsc": {
       "command": "uvx",
-      "args": ["open-gsc-mcp"]
+      "args": ["open-gsc-mcp@latest"]
     }
   }
 }
@@ -92,6 +92,10 @@ If Claude Desktop reports that `uvx` cannot be found, use its absolute path
 (`which uvx` on macOS and Linux, `where uvx` on Windows).
 
 **Cursor**: add the same `mcpServers` block to `~/.cursor/mcp.json`.
+
+`@latest` makes uvx check for a new release each time the client starts the server.
+Without it, uvx keeps running the version it cached the first time. To upgrade only when
+you choose, pin a version instead, such as `open-gsc-mcp@1.2.0`.
 
 To pass settings, add an `env` object to the server entry, or `-e NAME=value` to
 `claude mcp add`. Paths must be absolute: clients start the server from an arbitrary
@@ -108,7 +112,7 @@ For servers, CI or shared machines, use a service account instead of a personal 
 3. Point the server at the key:
 
    ```sh
-   claude mcp add --scope user gsc -e GSC_SERVICE_ACCOUNT_FILE=/abs/path/key.json -- uvx open-gsc-mcp
+   claude mcp add --scope user gsc -e GSC_SERVICE_ACCOUNT_FILE=/abs/path/key.json -- uvx open-gsc-mcp@latest
    ```
 
 When `GSC_SERVICE_ACCOUNT_FILE` is set it takes precedence over any OAuth login.
@@ -161,10 +165,10 @@ workflows with concrete dates and exact tool calls.
 Command line:
 
 ```sh
-uvx open-gsc-mcp                   # run the MCP server over stdio (what clients do)
-uvx open-gsc-mcp auth login        # sign in; --write for write access, --no-browser over SSH
-uvx open-gsc-mcp auth status       # which credentials are used, and do they work
-uvx open-gsc-mcp auth logout       # revoke and delete the saved login
+uvx open-gsc-mcp@latest              # run the MCP server over stdio (what clients do)
+uvx open-gsc-mcp@latest auth login   # sign in; --write for write access, --no-browser over SSH
+uvx open-gsc-mcp@latest auth status  # which credentials are used, and do they work
+uvx open-gsc-mcp@latest auth logout  # revoke and delete the saved login
 ```
 
 ## API behavior handled for you
@@ -194,13 +198,13 @@ URL lists.
 - **"Your Google login has expired or was revoked (invalid_grant)"**: the OAuth app is
   probably still in Testing status, which limits logins to 7 days. Publish it (Quick start,
   step 1.4) and run `auth login` again.
-- **"Not signed in"**: run `uvx open-gsc-mcp auth login --client-file ...`, or set
+- **"Not signed in"**: run `uvx open-gsc-mcp@latest auth login --client-file ...`, or set
   `GSC_SERVICE_ACCOUNT_FILE`.
 - **No properties, or 403 for a service account**: add the service account's email as a user
   on the property in Search Console.
 - **Empty results**: check the date range (Pacific Time; `final` data lags 2-3 days), the
   `search_type`, and filters. Each result's `notes` and `request` show what was asked.
-- **Check the setup end to end**: `uvx open-gsc-mcp auth status`.
+- **Check the setup end to end**: `uvx open-gsc-mcp@latest auth status`.
 
 ## Security and privacy
 

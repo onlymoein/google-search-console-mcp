@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The README's client configurations run `open-gsc-mcp@latest`. Without `@latest`, uvx
+  keeps the version it cached the first time, so users never received new releases.
+
 ## [1.2.0] - 2026-10-15
 
 ### Added
