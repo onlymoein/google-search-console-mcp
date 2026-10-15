@@ -6,12 +6,20 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `query_google_news_analytics` and `query_news_tab_analytics`, which replace
+  `query_news_analytics`. Each schema offers only what its source supports: Google News has
+  no query dimension and no `byProperty`, and the News tab has no `byNewsShowcasePanel`.
+
+### Deprecated
+
+- `query_news_analytics`. Calls to it still work and go to the new tool its `source`
+  selects, but it is no longer listed, so models use the new names. It will be removed in
+  2.0.0. If your client allowlists tools by name, add the two new ones.
+
 ### Changed
 
-- `query_news_analytics` is split into `query_google_news_analytics` and
-  `query_news_tab_analytics`, so each schema offers only what its source supports: Google
-  News has no query dimension and no `byProperty`, and the News tab has no
-  `byNewsShowcasePanel`.
 - A page URL as `site_url` now resolves to the property that contains it, with a note that
   the results cover the whole property. It used to be refused.
 - `query_image_analytics` and `query_video_analytics` no longer offer

@@ -76,6 +76,7 @@ async def test_sitemaps(live: Client, site: str) -> None:
         ("query_video_analytics", {}),
         ("query_google_news_analytics", {}),
         ("query_news_tab_analytics", {}),
+        ("query_news_analytics", {"source": "news_tab"}),  # deprecated alias
         ("list_search_appearances", {}),
     ],
 )

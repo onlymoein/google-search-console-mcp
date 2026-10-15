@@ -8,10 +8,11 @@ position, and these rules were checked against the live API (scripts/probe_compa
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Any
 
 from pydantic import Field
 
+from gsc_mcp.errors import GuardError
 from gsc_mcp.models import (
     AnalyticsResult,
     Dimension,
@@ -62,6 +63,17 @@ ShowcaseAggregationParam = Annotated[
         "group or filter by page, so dimensions default to ['date'] with it."
     ),
 ]
+
+
+def news_alias(arguments: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    """1.1.0's query_news_analytics(source=...), split by source into two tools in 1.2.0."""
+    forwarded = dict(arguments)
+    source = forwarded.pop("source", "google_news")
+    if source == "google_news":
+        return "query_google_news_analytics", forwarded
+    if source == "news_tab":
+        return "query_news_tab_analytics", forwarded
+    raise GuardError(f"source must be 'google_news' or 'news_tab'; got {source!r}.")
 
 
 def page_default(aggregation_type: str) -> list[str]:

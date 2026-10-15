@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import logging
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
@@ -27,6 +28,8 @@ if TYPE_CHECKING:
 
     from gsc_mcp.config import Settings
 
+logger = logging.getLogger(__name__)
+
 INSTRUCTIONS = """\
 Google Search Console data for the properties this Google account can access.
 
@@ -51,7 +54,7 @@ Vitals, manual actions, links, and the Page indexing report's URL lists.
 
 
 class SearchConsoleServer(MCPServer[None]):
-    """MCPServer, explaining rejected arguments in plain words.
+    """MCPServer that answers deprecated tool names and explains rejected arguments.
 
     The SDK passes on pydantic's report, which names internal model classes and links to
     pydantic's documentation; the model gets one sentence per problem instead.
@@ -60,6 +63,14 @@ class SearchConsoleServer(MCPServer[None]):
     async def call_tool(
         self, name: str, arguments: dict[str, Any], context: Context[None, Any] | None = None
     ) -> CallToolResult | InputRequiredResult:
+        alias = tools.DEPRECATED_ALIASES.get(name)
+        if alias is not None:
+            try:
+                current, arguments = alias(arguments)
+            except GuardError as exc:
+                raise GuardError(f"Error executing tool {name}: {exc}") from None
+            _warn_deprecated(name, current)
+            name = current
         try:
             return await super().call_tool(name, arguments, context)
         except UnexpectedToolError:
@@ -88,6 +99,13 @@ class SearchConsoleServer(MCPServer[None]):
         if isinstance(handlers, dict):
             for method in ("resources/list", "resources/templates/list", "resources/read"):
                 handlers.pop(method, None)  # pyright: ignore[reportUnknownMemberType]
+
+
+@functools.cache
+def _warn_deprecated(old: str, current: str) -> None:
+    logger.warning(
+        "Tool %s is deprecated and will be removed in 2.0.0; calls go to %s.", old, current
+    )
 
 
 def build_server(

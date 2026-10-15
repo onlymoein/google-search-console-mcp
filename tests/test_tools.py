@@ -722,6 +722,33 @@ async def test_google_news_has_no_query(api: ApiStub, client: Client) -> None:
     assert not api.bodies("searchAnalytics/query")
 
 
+@pytest.mark.parametrize("mode", ["legacy", "auto"])
+async def test_deprecated_news_tool_still_answers(
+    api: ApiStub, make_server: Callable[..., MCPServer], mode: str
+) -> None:
+    # query_news_analytics was split by source in 1.2.0. Old callers keep working until
+    # 2.0.0, but the name is not listed, so models only see the current tools.
+    api.on("POST", QUERY, {"rows": []})
+    async with Client(make_server(), mode=mode, raise_exceptions=True) as connected:
+        listed = {t.name for t in (await connected.list_tools()).tools}
+        assert "query_news_analytics" not in listed
+        for extra, search_type, dimensions in (
+            ({}, "googleNews", ["page"]),
+            ({"source": "google_news", "dimensions": ["country"]}, "googleNews", ["country"]),
+            ({"source": "news_tab"}, "news", ["query"]),
+        ):
+            await call(connected, "query_news_analytics", site_url="sc-domain:example.com", **extra)
+            body = api.bodies("searchAnalytics/query")[-1]
+            assert (body["type"], body["dimensions"]) == (search_type, dimensions)
+        message = await call_error(
+            connected, "query_news_analytics", site_url="sc-domain:example.com", source="web"
+        )
+        assert message == (
+            "Error executing tool query_news_analytics: source must be 'google_news' or "
+            "'news_tab'; got 'web'."
+        )
+
+
 @pytest.mark.parametrize("tool", ["query_discover_analytics", "query_google_news_analytics"])
 async def test_showcase_panels_default_to_date(api: ApiStub, client: Client, tool: str) -> None:
     api.on("POST", QUERY, {"rows": []})

@@ -133,6 +133,9 @@ When `GSC_SERVICE_ACCOUNT_FILE` is set it takes precedence over any OAuth login.
 | `batch_inspect_urls` | Up to 50 URLs concurrently, with progress, per-URL errors and a verdict summary. Stops cleanly when the quota runs out. |
 | `list_sitemaps`, `get_sitemap` | Submitted sitemaps with errors, warnings, pending state and URL counts. |
 
+`query_news_analytics` from 1.1.0 is deprecated: calls still work and go to the new news
+tool its `source` selects, until it is removed in 2.0.0.
+
 With `GSC_ENABLE_WRITES=1` four more tools appear: `submit_sitemap`, `delete_sitemap`,
 `add_site` and `delete_site`. They are annotated as writes (deletes as destructive), so
 well-behaved clients ask before running them.
