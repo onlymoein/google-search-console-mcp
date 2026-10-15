@@ -214,3 +214,159 @@ class WriteResult(BaseModel):
     target: str
     done: bool
     notes: list[str] = Field(default_factory=list[str])
+
+
+# --- Explaining a change ------------------------------------------------------------------
+
+
+UpdateTiming = Literal["current", "previous", "both", "between", "before"]
+
+
+class GoogleUpdate(BaseModel):
+    name: str
+    service: str = Field(description="Ranking, Indexing, Crawling or Serving.")
+    start: str
+    end: str | None = Field(description="Last day of the rollout; null while it is ongoing.")
+    timing: UpdateTiming = Field(
+        description="When it ran: during the current or previous period, across both, "
+        "between them, or in the two weeks before them."
+    )
+    url: str
+
+
+class Mover(BaseModel):
+    key: str
+    previous: int
+    current: int
+    change: int
+    change_pct: float | None = Field(description="Null when previous is 0.")
+    share_pct: float = Field(
+        description="This slice's share of all losses in the breakdown (of all gains, for a gain)."
+    )
+    previous_share_pct: float | None = Field(
+        description="This slice's share of the breakdown's previous-period total. A slice "
+        "whose share of the loss is far above this lost disproportionately."
+    )
+
+
+class Breakdown(BaseModel):
+    dimension: str
+    gains: int = Field(description="Sum of all rising slices.")
+    losses: int = Field(description="Sum of all falling slices (negative).")
+    net: int = Field(description="gains + losses.")
+    unattributed: int = Field(
+        description="The total change minus net: change these rows do not cover, such as "
+        "anonymized queries, results without a search appearance, or rows past fetch_limit."
+    )
+    top3_share_pct: float | None = Field(
+        description="How much of the losses (or gains, if traffic rose) the top 3 slices make up."
+    )
+    complete: bool = Field(description="False if a period hit fetch_limit.")
+    movers: list[Mover] = Field(
+        description="The biggest movers in the direction of the total change, then the "
+        "biggest movers against it."
+    )
+
+
+class ChangeEffects(BaseModel):
+    """Splits a change in clicks exactly into its two causes."""
+
+    impressions: int = Field(
+        description="Clicks gained or lost because impressions changed (at the previous CTR)."
+    )
+    ctr: int = Field(
+        description="Clicks gained or lost because CTR changed (on the current impressions)."
+    )
+
+
+class ChangeExplanation(BaseModel):
+    site_url: str
+    search_type: str
+    data_state: str
+    metric: str
+    current_period: tuple[str, str]
+    previous_period: tuple[str, str]
+    totals: ComparedRow
+    effects: ChangeEffects | None = None
+    breakdowns: list[Breakdown]
+    google_updates: list[GoogleUpdate] = Field(
+        description="Google updates and incidents in or near the periods. Timing alone does "
+        "not show that one caused the change."
+    )
+    summary: list[str] = Field(description="The findings in plain sentences.")
+    notes: list[str] = Field(default_factory=list[str])
+    requests: list[dict[str, Any]] = Field(description="The exact request bodies sent to Google.")
+
+
+# --- Indexing audit -------------------------------------------------------------------------
+
+
+class SitemapSource(BaseModel):
+    url: str
+    urls: int
+    error: str | None = None
+
+
+class LiveCheck(BaseModel):
+    """What the page serves now, fetched directly, to set beside what Google last saw."""
+
+    status: int | None = None
+    final_url: str | None = None
+    redirects: list[str] = Field(default_factory=list[str])
+    left_property: bool = False
+    noindex: bool = False
+    noindex_source: str | None = None
+    canonical: str | None = None
+    error: str | None = None
+
+
+class AuditUrl(BaseModel):
+    url: str
+    verdict: str | None = None
+    coverage_state: str | None = None
+    last_crawl_time: str | None = None
+    google_canonical: str | None = None
+    user_canonical: str | None = None
+    impressions: int | None = Field(
+        default=None, description="Web search impressions in the last 90 days of final data."
+    )
+    inspected_at: str | None = None
+    error: str | None = None
+    live: LiveCheck | None = None
+
+
+class CoverageCount(BaseModel):
+    coverage_state: str
+    verdict: str | None
+    count: int
+
+
+class AuditIssue(BaseModel):
+    key: str = Field(description="Pass as `issue` to list every URL with this issue.")
+    title: str
+    count: int
+    fix: str
+    examples: list[str]
+
+
+class IndexingAudit(BaseModel):
+    site_url: str
+    sitemaps: list[SitemapSource]
+    urls_in_sitemaps: int
+    inspected: int
+    not_yet_inspected: int
+    inspected_now: int
+    live_checked: int
+    quota_used_today: int = Field(
+        description="Inspections this server used for the property today (Pacific Time). "
+        "Other tools and clients share Google's 2,000 a day."
+    )
+    quota_exhausted_today: bool
+    coverage: list[CoverageCount]
+    issues: list[AuditIssue]
+    issue: str | None = Field(default=None, description="The issue listed in urls, if any.")
+    urls: list[AuditUrl] = Field(default_factory=list[AuditUrl])
+    next_start: int | None = Field(
+        default=None, description="Pass as start to list the next page of the issue's URLs."
+    )
+    notes: list[str] = Field(default_factory=list[str])

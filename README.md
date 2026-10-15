@@ -13,7 +13,8 @@ assistants (Claude Code, Claude Desktop, Cursor and any other MCP client) to the
 queries, pages, indexing and sitemaps in plain language; the server turns that into correct
 API calls and returns structured data.
 
-It runs on your machine, talks only to Google, and stores nothing but your own login.
+It runs on your machine and talks to Google; the only other site it reads is your own,
+during an indexing audit. It stores your login and your audits' progress, nothing else.
 
 > **Unofficial.** This project is not affiliated with or endorsed by Google. You use your own
 > Google Cloud credentials and are responsible for your usage under Google's terms.
@@ -25,6 +26,13 @@ It runs on your machine, talks only to Google, and stores nothing but your own l
   ten days, a range in the future. Other combinations fail with a terse 400. Every one of
   these is checked before the call and explained in plain words. The rules are
   [verified against the live API](scripts/probe_compat.py), not copied from blog posts.
+- **It explains changes, not just numbers.** `explain_change` splits a rise or fall by
+  page, query, country, device and search appearance, separates lost impressions from a
+  lower click-through rate, and lines the change up with Google's published updates.
+- **Full indexing audits.** Google's API does not expose the Page indexing report's URL
+  lists, so `audit_indexing` rebuilds them: it inspects every sitemap URL within the daily
+  quota, carries on where it stopped the next day, and can check each live page against
+  what Google last saw.
 - **Read-only by default.** Write tools do not exist unless you turn them on, and the login
   only asks Google for read-only access unless you need more.
 - **Structured output.** Every tool declares an output schema, rows come back as named
@@ -133,8 +141,10 @@ When `GSC_SERVICE_ACCOUNT_FILE` is set it takes precedence over any OAuth login.
 | `list_search_appearances` | Rich results and other result features the property had: step one of Google's two-step appearance query. |
 | `query_search_appearance` | Step two: one appearance broken down by query, page, country, device or date. |
 | `compare_periods` | Two equal-length periods: totals and per-key changes, absolute and percent, biggest movers first. |
+| `explain_change` | Why traffic moved between two periods: which pages, queries, countries, devices and search appearances account for it, how much came from impressions versus click-through rate, and Google updates in or near the periods. |
 | `inspect_url` | Index status, coverage, canonical (Google's versus yours), crawl, robots.txt and rich results for one URL. |
 | `batch_inspect_urls` | Up to 50 URLs concurrently, with progress, per-URL errors and a verdict summary. Stops cleanly when the quota runs out. |
+| `audit_indexing` | Every sitemap URL, inspected over as many calls and days as it takes and grouped by index status with likely fixes; canonical conflicts, indexed pages with no impressions, pages missing from the sitemaps; optionally a live check of each page. |
 | `list_sitemaps`, `get_sitemap` | Submitted sitemaps with errors, warnings, pending state and URL counts. |
 
 `query_news_analytics` from 1.1.0 is deprecated: calls still work and go to the new news
@@ -152,6 +162,12 @@ page URL they note that they cover the whole property.
 **Prompts**: `weekly_report`, `indexing_audit` and `content_opportunities` are ready-made
 workflows with concrete dates and exact tool calls.
 
+**Indexing audits** save their progress locally, so each `audit_indexing` call carries on
+where the last one stopped. Inspections take a few seconds each, so a call covers about 50
+URLs; for a large site, run `uvx open-gsc-mcp@latest audit sc-domain:example.com` in a
+terminal (or daily from cron) to use the full 2,000 a day, then ask your assistant about
+the results.
+
 ## Configuration
 
 | Variable | Default | Purpose |
@@ -161,6 +177,7 @@ workflows with concrete dates and exact tool calls.
 | `GSC_TOKEN_FILE` | per-user config dir | Where `auth login` saves the login (mode 0600). |
 | `GSC_ENABLE_WRITES` | `0` | Register the four write tools. Needs a login with write access: `auth login --write`. |
 | `GSC_LOG_LEVEL` | `INFO` | `DEBUG` also logs every HTTP request. Logs go to stderr. |
+| `GSC_DATA_DIR` | per-user data dir | Where indexing audits keep their progress (one SQLite file, owner-only). |
 
 Command line:
 
@@ -169,6 +186,7 @@ uvx open-gsc-mcp@latest              # run the MCP server over stdio (what clien
 uvx open-gsc-mcp@latest auth login   # sign in; --write for write access, --no-browser over SSH
 uvx open-gsc-mcp@latest auth status  # which credentials are used, and do they work
 uvx open-gsc-mcp@latest auth logout  # revoke and delete the saved login
+uvx open-gsc-mcp@latest audit SITE   # inspect up to a day's 2,000 sitemap URLs; --fetch-pages
 ```
 
 ## API behavior handled for you
@@ -187,11 +205,11 @@ uvx open-gsc-mcp@latest auth logout  # revoke and delete the saved login
 | At most 25,000 rows per request, top rows only. | Defaults to 100 rows and returns `next_start_row` for paging. |
 | URL Inspection: 2,000 per day and 600 per minute per property. | Batches run 5 at a time and stop cleanly on quota errors. |
 | `siteUrl` must match the property string exactly. | Resolves bare domains and URLs to the property that contains them. |
+| The Page indexing report's URL lists are not in the API, and URL Inspection allows 2,000 a day. | `audit_indexing` rebuilds the lists from your sitemaps over as many days as it takes. |
 
 **Not available through Google's API**, so no server can provide them: the generative AI
 (AI Overviews and AI Mode) report, platform properties (Instagram, TikTok, X, YouTube), the
-branded query filter, Core Web Vitals, manual actions, links, and the Page indexing report's
-URL lists.
+branded query filter, Core Web Vitals, manual actions and links.
 
 ## Troubleshooting
 
@@ -208,7 +226,14 @@ URL lists.
 
 ## Security and privacy
 
-- Runs locally over stdio. No telemetry; nothing is sent anywhere except Google's API.
+- Runs locally over stdio, with no telemetry. It calls Google's API and reads Google's
+  public update feed (status.search.google.com) for `explain_change`.
+- An indexing audit also reads your property's sitemaps and, with `fetch_pages`, its pages.
+  It fetches only URLs inside the property, never hosts that resolve to private or local
+  addresses, and follows redirects only while they stay inside. From each page it keeps
+  only the status code, redirects, robots directives and canonical URL.
+- Audit progress (URLs and their index status) is kept in one SQLite file in your user data
+  directory (`GSC_DATA_DIR`), readable only by you.
 - The OAuth login is stored in your user config directory with owner-only permissions.
   `auth logout` revokes it at Google and deletes it.
 - Logins request read-only access unless writes are enabled.

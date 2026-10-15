@@ -4,6 +4,7 @@ open-gsc-mcp                      run the MCP server over stdio
 open-gsc-mcp auth login           sign in with the OAuth desktop flow
 open-gsc-mcp auth status          show which credentials are used and test them
 open-gsc-mcp auth logout          revoke and delete the saved login
+open-gsc-mcp audit SITE           run an indexing audit, up to a full day's inspections
 """
 
 from __future__ import annotations
@@ -16,12 +17,14 @@ import anyio
 
 from gsc_mcp import __version__, auth
 from gsc_mcp.auth import FULL_SCOPE, GoogleTokenSource
-from gsc_mcp.client import SearchConsoleClient
+from gsc_mcp.client import INSPECTIONS_PER_DAY, SearchConsoleClient
 from gsc_mcp.config import ENV_OAUTH_CLIENT_FILE, Settings, expand_path
 from gsc_mcp.errors import GSCError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    from gsc_mcp.models import IndexingAudit
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -33,6 +36,8 @@ def main(argv: Sequence[str] | None = None) -> None:
             from gsc_mcp.server import build_server
 
             build_server(settings).run("stdio")
+        elif args.command == "audit":
+            sys.exit(_audit(settings, args))
         elif args.auth_command == "login":
             sys.exit(_login(settings, args))
         elif args.auth_command == "status":
@@ -76,7 +81,35 @@ def _parser() -> argparse.ArgumentParser:
     )
     auth_commands.add_parser("status", help="show which credentials are used and test them")
     auth_commands.add_parser("logout", help="revoke and delete the saved login")
+
+    audit = commands.add_parser(
+        "audit",
+        help="run an indexing audit, up to a full day's inspections",
+        description="Inspect the property's sitemap URLs and save the results, continuing "
+        "where the last run stopped. Your assistant reads them with audit_indexing.",
+    )
+    audit.add_argument("site_url", help="the property, e.g. sc-domain:example.com")
+    audit.add_argument(
+        "--inspect",
+        type=_inspect_count,
+        default=INSPECTIONS_PER_DAY,
+        help=f"URLs to inspect (default {INSPECTIONS_PER_DAY:,}, Google's daily limit)",
+    )
+    audit.add_argument(
+        "--fetch-pages",
+        action="store_true",
+        help="also fetch the inspected pages to compare them with what Google saw",
+    )
+    audit.add_argument("--sitemap", help="audit this sitemap instead of every submitted one")
+    audit.add_argument("--restart", action="store_true", help="forget the saved audit first")
     return parser
+
+
+def _inspect_count(raw: str) -> int:
+    value = int(raw)
+    if not 0 <= value <= INSPECTIONS_PER_DAY:
+        raise argparse.ArgumentTypeError(f"must be between 0 and {INSPECTIONS_PER_DAY:,}")
+    return value
 
 
 def _login(settings: Settings, args: argparse.Namespace) -> int:
@@ -142,6 +175,58 @@ def _logout(settings: Settings) -> int:
         )
         print(f"Signed out: deleted {token_file}. Nothing to revoke: {reason}.")
     return 0
+
+
+def _audit(settings: Settings, args: argparse.Namespace) -> int:
+    from gsc_mcp.server import close_deps, make_deps
+    from gsc_mcp.tools._audit import Auditor
+
+    async def run() -> int:
+        deps = make_deps(settings)
+        try:
+            resolution = await deps.sites.resolve(args.site_url)
+            prop = await deps.sites.property_for(resolution.site_url)
+            auditor = Auditor(deps, prop)
+            if args.restart:
+                deps.store.reset(prop.site_url)
+            print(f"Reading the sitemaps of {prop.site_url}...", file=sys.stderr)
+            await auditor.sync_sitemaps(args.sitemap, force=args.restart)
+            await auditor.sync_pages()
+
+            async def progress(done: int, total: int, url: str) -> None:
+                print(f"\rInspected {done:,} of {total:,}", end="", file=sys.stderr, flush=True)
+
+            await auditor.inspect(args.inspect, progress)
+            print(file=sys.stderr)
+            if args.fetch_pages:
+                print("Fetching the pages...", file=sys.stderr)
+                await auditor.check_live(args.inspect or INSPECTIONS_PER_DAY)
+            _print_audit(auditor.report(examples=3))
+            print(f"\nSaved in {deps.store.path}")
+            return 0
+        finally:
+            await close_deps(deps)
+
+    return anyio.run(run)
+
+
+def _print_audit(report: IndexingAudit) -> None:
+    print(
+        f"\n{report.site_url}: {report.urls_in_sitemaps:,} URLs in the sitemaps, "
+        f"{report.inspected:,} inspected ({report.inspected_now:,} just now)."
+    )
+    if report.coverage:
+        print("\nIndex status:")
+        for group in report.coverage:
+            print(f"  {group.count:>6,}  {group.coverage_state}")
+    if report.issues:
+        print("\nIssues:")
+        for issue in report.issues:
+            print(f"  {issue.count:>6,}  {issue.title}")
+            for url in issue.examples:
+                print(f"          {url}")
+    for note in report.notes:
+        print(f"\n{note}")
 
 
 def _check_access(settings: Settings) -> int:

@@ -23,57 +23,54 @@ DATA_IS_UNTRUSTED = (
 def register(mcp: MCPServer, deps: Deps) -> None:
     @mcp.prompt(title="Weekly search report")
     def weekly_report(site_url: str) -> str:
-        """Week-over-week performance report: totals, biggest query and page movers,
-        devices, countries and search appearances."""
+        """Week-over-week performance report: totals, what drove the change, biggest query
+        and page movers, devices, countries and search appearances."""
         end = deps.today() - timedelta(days=3)
         start = end - timedelta(days=6)
         week = f"current_start='{start}', current_end='{end}'"
         return f"""Write a weekly Google Search performance report for {site_url}, covering \
 {start} to {end} (the last 7 days with final data) against the 7 days before.
 
-1. compare_periods(site_url='{site_url}', {week}, dimensions=[]) for the totals.
+1. explain_change(site_url='{site_url}', {week}) for the totals, which pages, queries, \
+countries, devices and search appearances drove the change, and Google updates that week.
 2. compare_periods(site_url='{site_url}', {week}, dimensions=['query'], row_limit=20) for the \
 queries that gained or lost the most clicks.
 3. compare_periods(site_url='{site_url}', {week}, dimensions=['page'], row_limit=20) for pages.
-4. query_search_analytics(site_url='{site_url}', start_date='{start}', end_date='{end}', \
-data_state='final') with dimensions=['device'], then with dimensions=['country'] and \
-row_limit=10.
-5. list_search_appearances(site_url='{site_url}', start_date='{start}', end_date='{end}').
+4. list_search_appearances(site_url='{site_url}', start_date='{start}', end_date='{end}').
 
 Report: a three-sentence summary; a table of total clicks, impressions, CTR and position \
-with changes; top 5 gains and top 5 losses with likely causes; pages that need attention; \
-and caveats (recent data, anonymized queries, and any rows with a null change because a \
-period hit fetch_limit).
+with changes; what drove the change; top 5 gains and top 5 losses; pages that need \
+attention; and caveats (recent data, anonymized queries, any rows with a null change \
+because a period hit fetch_limit, and that an update's timing alone does not prove it \
+caused a change).
 
 {DATA_IS_UNTRUSTED}"""
 
     @mcp.prompt(title="Indexing audit")
     def indexing_audit(site_url: str, urls: str | None = None) -> str:
-        """Check sitemaps and the index status of key pages, grouped by issue with fixes.
-        Optionally pass URLs, one per line or comma-separated; otherwise top pages are used."""
-        today = deps.today()
-        start = today - timedelta(days=27)
+        """Audit the index status of every sitemap URL, grouped by issue with fixes.
+        Optionally pass URLs, one per line or comma-separated, to check just those."""
         if urls and urls.strip():
             listed = [u.strip() for u in urls.replace(",", "\n").splitlines() if u.strip()]
-            pages = f"2. batch_inspect_urls(site_url='{site_url}', urls={listed[:50]!r})."
+            steps = f"""2. batch_inspect_urls(site_url='{site_url}', urls={listed[:50]!r}).
+3. Group every URL whose verdict is not PASS by coverage_state. Flag canonical mismatches \
+(google_canonical differs from user_canonical), robots.txt blocks, fetch failures and \
+rich result issues."""
         else:
-            pages = (
-                f"2. query_search_analytics(site_url='{site_url}', start_date='{start}', "
-                f"end_date='{today}', dimensions=['page'], row_limit=30) to find the top "
-                "pages, then batch_inspect_urls on those page URLs."
-            )
+            steps = f"""2. audit_indexing(site_url='{site_url}', fetch_pages=True). Each call \
+inspects the next 50 sitemap URLs and saves its progress; call it again while \
+not_yet_inspected is above 0 and the quota allows. For thousands of URLs, suggest running \
+`open-gsc-mcp audit {site_url}` in a terminal instead.
+3. For the largest issues, audit_indexing(site_url='{site_url}', issue='<key>') lists \
+their URLs."""
         return f"""Run an indexing audit for {site_url}.
 
 1. list_sitemaps(site_url='{site_url}'): note errors, warnings, pending sitemaps and \
 sitemaps not downloaded recently.
-{pages}
-3. Group every URL whose verdict is not PASS by coverage_state. Flag canonical mismatches \
-(google_canonical differs from user_canonical), robots.txt blocks, fetch failures and \
-rich result issues.
+{steps}
 
 Report a table of issues (issue, affected URLs, likely cause, fix), worst first, then the \
-sitemap findings. URL Inspection is limited to 2,000 inspections per day per property, so \
-do not inspect more URLs than the audit needs.
+sitemap findings. URL Inspection is limited to 2,000 inspections per day per property.
 
 {DATA_IS_UNTRUSTED}"""
 

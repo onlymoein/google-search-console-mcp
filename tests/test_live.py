@@ -7,8 +7,10 @@ uv run pytest -m live
 
 from __future__ import annotations
 
+import dataclasses
 import os
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -30,8 +32,9 @@ def site() -> str:
 
 
 @pytest.fixture
-async def live() -> AsyncIterator[Client]:
-    settings = Settings.from_env()
+async def live(tmp_path: Path) -> AsyncIterator[Client]:
+    # Audits get a throwaway data directory, never the user's real one.
+    settings = dataclasses.replace(Settings.from_env(), data_dir=tmp_path)
     async with Client(build_server(settings), raise_exceptions=True) as client:
         yield client
 
@@ -83,3 +86,22 @@ async def test_sitemaps(live: Client, site: str) -> None:
 async def test_surface_tools(live: Client, site: str, tool: str, arguments: dict[str, Any]) -> None:
     result = await ok(live, tool, site_url=site, **arguments)
     assert result["site_url"] == site
+
+
+async def test_explain_change(live: Client, site: str) -> None:
+    result = await ok(live, "explain_change", site_url=site, metric="impressions")
+    assert result["summary"][0].startswith("Impressions ")
+    assert len(result["requests"]) == 2 + 2 * len(result["breakdowns"])
+
+
+async def test_audit_reads_the_sitemaps_without_inspecting(live: Client, site: str) -> None:
+    result = await live.call_tool("audit_indexing", {"site_url": site, "inspect": 0})
+    if result.is_error:
+        text = result.content[0]
+        assert text.type == "text"
+        assert "No sitemaps are submitted" in text.text
+        return
+    data = result.structured_content
+    assert data is not None
+    assert (data["inspected_now"], data["quota_used_today"]) == (0, 0)
+    assert data["sitemaps"]

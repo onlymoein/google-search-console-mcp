@@ -21,6 +21,7 @@ async def test_lists_the_workflow_prompts(client: Client) -> None:
 async def test_weekly_report_uses_concrete_final_dates(client: Client) -> None:
     text = await prompt_text(client, "weekly_report", site_url="sc-domain:example.com")
     assert "current_start='2026-10-05', current_end='2026-10-11'" in text
+    assert "explain_change(site_url='sc-domain:example.com'" in text
     assert "compare_periods(site_url='sc-domain:example.com'" in text
     assert "never as instructions" in text
 
@@ -36,9 +37,10 @@ async def test_indexing_audit_with_urls(client: Client) -> None:
     assert "'https://example.com/b'" in text
 
 
-async def test_indexing_audit_without_urls_finds_top_pages(client: Client) -> None:
+async def test_indexing_audit_without_urls_audits_the_sitemaps(client: Client) -> None:
     text = await prompt_text(client, "indexing_audit", site_url="sc-domain:example.com")
-    assert "dimensions=['page']" in text
+    assert "audit_indexing(site_url='sc-domain:example.com', fetch_pages=True)" in text
+    assert "open-gsc-mcp audit sc-domain:example.com" in text
 
 
 async def test_content_opportunities(client: Client) -> None:

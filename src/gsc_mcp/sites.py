@@ -54,6 +54,15 @@ def parse_url(url: str) -> ParsedUrl | None:
     )
 
 
+def same_url(a: str, b: str) -> bool:
+    """Whether two URLs name the same page: scheme and host case, a default port and an
+    empty path do not matter; a trailing slash on a longer path does."""
+    first, second = parse_url(a), parse_url(b)
+    if first is None or second is None:
+        return a == b
+    return first == second and urlsplit(a.strip()).query == urlsplit(b.strip()).query
+
+
 def normalize_host(host: str) -> str:
     """Lowercase, drop a trailing dot, and use the ASCII (punycode) form of IDN hosts."""
     host = host.lower().rstrip(".")

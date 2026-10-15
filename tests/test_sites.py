@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from gsc_mcp.errors import GuardError, SiteNotFoundError
-from gsc_mcp.sites import Property, Resolution, SiteResolver, exact_match, match
+from gsc_mcp.sites import Property, Resolution, SiteResolver, exact_match, match, same_url
 
 DOMAIN = Property("sc-domain:example.com", "siteOwner")
 WWW = Property("https://www.example.com/", "siteFullUser")
@@ -179,3 +179,18 @@ def test_malformed_url_is_a_guard_error() -> None:
 )
 def test_exact_match(requested: str, expected: Property | None) -> None:
     assert exact_match(requested, ALL) == expected
+
+
+@pytest.mark.parametrize(
+    ("a", "b", "same"),
+    [
+        ("https://example.com", "https://example.com/", True),
+        ("HTTPS://Example.com:443/a", "https://example.com/a", True),
+        ("https://example.com/a", "https://example.com/a/", False),
+        ("http://example.com/a", "https://example.com/a", False),
+        ("https://example.com/a?x=1", "https://example.com/a", False),
+        ("https://example.com/a#top", "https://example.com/a", True),
+    ],
+)
+def test_same_url(a: str, b: str, same: bool) -> None:
+    assert same_url(a, b) is same

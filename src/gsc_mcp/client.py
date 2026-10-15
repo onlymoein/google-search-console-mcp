@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://searchconsole.googleapis.com/"
+# URL Inspection allows 2,000 inspections per property per day (and 600 a minute).
+INSPECTIONS_PER_DAY = 2000
 RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
 
 JSON = dict[str, Any]

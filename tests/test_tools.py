@@ -11,13 +11,10 @@ import pytest
 from mcp import Client
 from mcp.server import MCPServer
 
-from tests.conftest import ApiStub, Handler
+from tests.conftest import DOMAIN_PATH, INSPECT, QUERY, ApiStub, Handler, call, call_error
 
 pytestmark = pytest.mark.anyio
 
-DOMAIN_PATH = "webmasters/v3/sites/sc-domain%3Aexample.com"
-QUERY = f"{DOMAIN_PATH}/searchAnalytics/query"
-INSPECT = "v1/urlInspection/index:inspect"
 
 READ_TOOLS = {
     "list_sites",
@@ -32,27 +29,14 @@ READ_TOOLS = {
     "query_google_news_analytics",
     "query_news_tab_analytics",
     "compare_periods",
+    "explain_change",
     "inspect_url",
+    "audit_indexing",
     "batch_inspect_urls",
     "list_sitemaps",
     "get_sitemap",
 }
 WRITE_TOOLS = {"add_site", "delete_site", "submit_sitemap", "delete_sitemap"}
-
-
-async def call(client: Client, name: str, **arguments: Any) -> dict[str, Any]:
-    result = await client.call_tool(name, arguments)
-    assert not result.is_error, result.content
-    assert result.structured_content is not None
-    return result.structured_content
-
-
-async def call_error(client: Client, name: str, **arguments: Any) -> str:
-    result = await client.call_tool(name, arguments)
-    assert result.is_error
-    text = result.content[0]
-    assert text.type == "text"
-    return text.text
 
 
 # --- Registration ---------------------------------------------------------------------

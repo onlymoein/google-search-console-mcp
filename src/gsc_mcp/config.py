@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-from platformdirs import user_config_path
+from platformdirs import user_config_path, user_data_path
 
 from gsc_mcp.errors import ConfigError
 
@@ -26,6 +26,7 @@ ENV_SERVICE_ACCOUNT_FILE = "GSC_SERVICE_ACCOUNT_FILE"
 ENV_TOKEN_FILE = "GSC_TOKEN_FILE"  # noqa: S105 - an env var name, not a secret
 ENV_ENABLE_WRITES = "GSC_ENABLE_WRITES"
 ENV_LOG_LEVEL = "GSC_LOG_LEVEL"
+ENV_DATA_DIR = "GSC_DATA_DIR"
 
 APP_NAME = "open-gsc-mcp"
 _TRUE = {"1", "true", "yes", "on"}
@@ -37,6 +38,10 @@ def default_token_file() -> Path:
     return user_config_path(APP_NAME, appauthor=False) / "token.json"
 
 
+def default_data_dir() -> Path:
+    return user_data_path(APP_NAME, appauthor=False)
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     oauth_client_file: Path | None = None
@@ -44,10 +49,16 @@ class Settings:
     token_file: Path | None = None
     enable_writes: bool = False
     log_level: LogLevel = "INFO"
+    data_dir: Path | None = None
 
     @property
     def resolved_token_file(self) -> Path:
         return self.token_file or default_token_file()
+
+    @property
+    def resolved_data_dir(self) -> Path:
+        """Where indexing audits keep their progress."""
+        return self.data_dir or default_data_dir()
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -58,6 +69,7 @@ class Settings:
             token_file=_path(env, ENV_TOKEN_FILE),
             enable_writes=_flag(env, ENV_ENABLE_WRITES),
             log_level=_log_level(env),
+            data_dir=_path(env, ENV_DATA_DIR),
         )
 
 

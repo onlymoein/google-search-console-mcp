@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from gsc_mcp.config import Settings, default_token_file
+from gsc_mcp.config import Settings, default_data_dir, default_token_file
 from gsc_mcp.errors import ConfigError
 
 
@@ -12,6 +12,7 @@ def test_defaults() -> None:
     settings = Settings.from_env({})
     assert settings == Settings()
     assert settings.resolved_token_file == default_token_file()
+    assert settings.resolved_data_dir == default_data_dir()
 
 
 def test_reads_every_variable(tmp_path: Path) -> None:
@@ -22,6 +23,7 @@ def test_reads_every_variable(tmp_path: Path) -> None:
             "GSC_TOKEN_FILE": str(tmp_path / "token.json"),
             "GSC_ENABLE_WRITES": "true",
             "GSC_LOG_LEVEL": "debug",
+            "GSC_DATA_DIR": str(tmp_path / "data"),
         }
     )
     assert settings.oauth_client_file == tmp_path / "client.json"
@@ -29,6 +31,7 @@ def test_reads_every_variable(tmp_path: Path) -> None:
     assert settings.resolved_token_file == tmp_path / "token.json"
     assert settings.enable_writes is True
     assert settings.log_level == "DEBUG"
+    assert settings.resolved_data_dir == tmp_path / "data"
 
 
 def test_expands_home_and_variables(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

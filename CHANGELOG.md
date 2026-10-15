@@ -6,8 +6,31 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `explain_change`: why traffic rose or fell between two periods. It splits the change by
+  page, query, country, device and search appearance and names the slices that account
+  for most of it; splits a change in clicks into the part from impressions and the part
+  from click-through rate; and lists Google's search updates and incidents in or near the
+  periods, from a bundled history back to 2021 plus Google's live feed.
+- `audit_indexing`: a full indexing audit rebuilt from the property's sitemaps, since the
+  API does not expose the Page indexing report's URL lists. It inspects every sitemap URL
+  within the 2,000-a-day quota, saving progress so the audit carries on across calls and
+  days; groups URLs by index status with likely fixes; and flags canonical conflicts,
+  indexed pages with no impressions in 90 days, and pages shown in search but missing from
+  the sitemaps. With `fetch_pages` it also checks each live page (status, redirects,
+  noindex, canonical) against what Google last saw.
+- `open-gsc-mcp audit SITE`: runs a full day's audit from a terminal or cron, where no
+  client timeout applies.
+- `GSC_DATA_DIR`: where audits keep their progress.
+
 ### Changed
 
+- The server now reads Google's public update feed, and indexing audits read the
+  property's own sitemaps and pages. Site fetches stay inside the property and never reach
+  hosts on private or local addresses.
+- The `weekly_report` prompt starts from `explain_change`, and `indexing_audit` audits every
+  sitemap URL instead of a sample of top pages.
 - The README's client configurations run `open-gsc-mcp@latest`. Without `@latest`, uvx
   keeps the version it cached the first time, so users never received new releases.
 

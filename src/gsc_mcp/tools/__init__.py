@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING, Any
 from gsc_mcp.tools import (
     analytics,
     appearances,
+    audit,
     compare,
+    explain,
     hourly,
     inspection,
     sitemaps,
@@ -22,7 +24,18 @@ if TYPE_CHECKING:
 
     from gsc_mcp.tools._common import Deps
 
-MODULES = (sites, analytics, surfaces, hourly, appearances, compare, inspection, sitemaps)
+MODULES = (
+    sites,
+    analytics,
+    surfaces,
+    hourly,
+    appearances,
+    compare,
+    explain,
+    inspection,
+    audit,
+    sitemaps,
+)
 
 # Renamed tools: the old name maps its arguments onto the current tool, so callers written
 # for an earlier release keep working. Not listed in tools/list, so models only see the

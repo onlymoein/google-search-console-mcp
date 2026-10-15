@@ -21,6 +21,9 @@ if TYPE_CHECKING:
     from gsc_mcp.guards import AnalyticsQuery
     from gsc_mcp.models import DimensionFilter
     from gsc_mcp.sites import Resolution, SiteResolver
+    from gsc_mcp.store import AuditStore
+    from gsc_mcp.updates import GoogleUpdates
+    from gsc_mcp.web import WebClient
 
 
 @dataclass(slots=True)
@@ -28,6 +31,9 @@ class Deps:
     client: SearchConsoleClient
     sites: SiteResolver
     settings: Settings
+    web: WebClient
+    updates: GoogleUpdates
+    store: AuditStore
     today: Callable[[], date] = today_pacific
 
 

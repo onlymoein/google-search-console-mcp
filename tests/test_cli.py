@@ -2,10 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import httpx2
 import pytest
 
-from gsc_mcp import __version__, auth
+from gsc_mcp import __version__, auth, server
 from gsc_mcp.cli import main
+from gsc_mcp.client import SearchConsoleClient
+from gsc_mcp.config import Settings
+from gsc_mcp.tools._common import Deps
+from gsc_mcp.web import WebClient
+from tests.conftest import DOMAIN_PATH, INSPECT, QUERY, TODAY, ApiStub, WebStub
 
 
 @pytest.fixture(autouse=True)
@@ -110,3 +116,39 @@ def test_status_with_a_missing_service_account_key(
     out = capsys.readouterr().out
     assert "GSC_SERVICE_ACCOUNT_FILE" in out
     assert "auth login" not in out
+
+
+def test_audit_runs_a_full_day_from_the_terminal(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    api: ApiStub,
+    web: WebStub,
+    gsc: SearchConsoleClient,
+) -> None:
+    sitemap = "https://example.com/sitemap.xml"
+    api.on("GET", f"{DOMAIN_PATH}/sitemaps", {"sitemap": [{"path": sitemap}]})
+    api.on("POST", QUERY, {"rows": []})
+    api.on(
+        "POST",
+        INSPECT,
+        {
+            "inspectionResult": {
+                "indexStatusResult": {"verdict": "NEUTRAL", "coverageState": "Crawled"}
+            }
+        },
+    )
+    web.on(sitemap, httpx2.Response(200, text="https://example.com/a\nhttps://example.com/b"))
+    monkeypatch.setenv("GSC_DATA_DIR", str(tmp_path / "data"))
+    real = server.make_deps
+
+    def make_deps(settings: Settings) -> Deps:
+        fetcher = WebClient(transport=httpx2.MockTransport(web.handle), resolve=web.resolve)
+        return real(settings, client=gsc, web=fetcher, today=lambda: TODAY)
+
+    monkeypatch.setattr(server, "make_deps", make_deps)
+    assert run("audit", "sc-domain:example.com") == 0
+    out = capsys.readouterr().out
+    assert "2 URLs in the sitemaps, 2 inspected (2 just now)" in out
+    assert "Not indexed: Crawled" in out
+    assert f"Saved in {tmp_path / 'data' / 'audits.sqlite3'}" in out

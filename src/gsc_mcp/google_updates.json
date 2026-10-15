@@ -1,0 +1,408 @@
+[
+ {
+  "id": "XhUDXP7A67iHCD2kmbVu",
+  "name": "September 2026 spam update",
+  "service": "Ranking",
+  "start": "2026-09-24",
+  "end": "2026-10-08"
+ },
+ {
+  "id": "LEubPCm2octf2uMqCFKE",
+  "name": "August 2026 spam update",
+  "service": "Ranking",
+  "start": "2026-08-18",
+  "end": "2026-08-21"
+ },
+ {
+  "id": "YUX1peHev5a4fkxLDiUQ",
+  "name": "June 2026 spam update",
+  "service": "Ranking",
+  "start": "2026-06-24",
+  "end": "2026-06-26"
+ },
+ {
+  "id": "wdAXJk6LRRihEjpzEeWE",
+  "name": "May 2026 core update",
+  "service": "Ranking",
+  "start": "2026-05-21",
+  "end": "2026-06-02"
+ },
+ {
+  "id": "7eTbAa2jWdToLkraZj5y",
+  "name": "March 2026 core update",
+  "service": "Ranking",
+  "start": "2026-03-27",
+  "end": "2026-04-08"
+ },
+ {
+  "id": "VbnSXAH4SmEcxPtx4YSD",
+  "name": "March 2026 spam update",
+  "service": "Ranking",
+  "start": "2026-03-24",
+  "end": "2026-03-25"
+ },
+ {
+  "id": "TZF4pLmbzFdoBPP6o3iv",
+  "name": "Serving was experiencing an issue",
+  "service": "Serving",
+  "start": "2026-02-24",
+  "end": "2026-02-24"
+ },
+ {
+  "id": "mYbNTqV1ytDc2fA8hUz4",
+  "name": "February 2026 Discover update",
+  "service": "Ranking",
+  "start": "2026-02-05",
+  "end": "2026-02-27"
+ },
+ {
+  "id": "DsirqJ1gpPRgVQeccPRv",
+  "name": "December 2025 core update",
+  "service": "Ranking",
+  "start": "2025-12-11",
+  "end": "2025-12-29"
+ },
+ {
+  "id": "pW6WN7Ymo49q7z8pKk9w",
+  "name": "Serving is experiencing an ongoing issue",
+  "service": "Serving",
+  "start": "2025-10-03",
+  "end": "2025-10-06"
+ },
+ {
+  "id": "a7Aainy6E9rZsmfq82xt",
+  "name": "August 2025 spam update",
+  "service": "Ranking",
+  "start": "2025-08-26",
+  "end": "2025-09-22"
+ },
+ {
+  "id": "riq1AuqETW46NfBCe5NT",
+  "name": "June 2025 core update",
+  "service": "Ranking",
+  "start": "2025-06-30",
+  "end": "2025-07-17"
+ },
+ {
+  "id": "wNcefVMLpVGGoFLzgMEg",
+  "name": "There&#39;s an ongoing issue with serving Google Lens, Discover, and Voice Search.",
+  "service": "Serving",
+  "start": "2025-06-12",
+  "end": "2025-06-12"
+ },
+ {
+  "id": "rX6zGEp9vJJxxrY16g4A",
+  "name": "Google Search is experiencing an indexing issue",
+  "service": "Indexing",
+  "start": "2025-06-12",
+  "end": "2025-06-12"
+ },
+ {
+  "id": "zpmwuSwifjDjfrVdaZUx",
+  "name": "March 2025 core update",
+  "service": "Ranking",
+  "start": "2025-03-13",
+  "end": "2025-03-27"
+ },
+ {
+  "id": "UUq2WSouY7PhSm8zvtD1",
+  "name": "December 2024 spam update",
+  "service": "Ranking",
+  "start": "2024-12-19",
+  "end": "2024-12-26"
+ },
+ {
+  "id": "kdTQ3CitewEHCy5vuhTD",
+  "name": "Google Lens is experiencing a serving issue",
+  "service": "Serving",
+  "start": "2024-12-12",
+  "end": "2024-12-13"
+ },
+ {
+  "id": "V9nDKuo6nWKh2ThBALgA",
+  "name": "December 2024 core update",
+  "service": "Ranking",
+  "start": "2024-12-12",
+  "end": "2024-12-18"
+ },
+ {
+  "id": "iGN9Cz8C64gm57ZXwxze",
+  "name": "Google Search is experiencing an indexing issue",
+  "service": "Indexing",
+  "start": "2024-12-09",
+  "end": "2024-12-09"
+ },
+ {
+  "id": "G7rp11wqTaTGn6JjiPF3",
+  "name": "November 2024 core update",
+  "service": "Ranking",
+  "start": "2024-11-11",
+  "end": "2024-12-05"
+ },
+ {
+  "id": "8FqjYCvePmrsF9P5assw",
+  "name": "Serving is experiencing an ongoing issue",
+  "service": "Serving",
+  "start": "2024-09-14",
+  "end": "2024-09-15"
+ },
+ {
+  "id": "gVx6b2o78zke7GrMidGy",
+  "name": "August 2024 core update",
+  "service": "Ranking",
+  "start": "2024-08-15",
+  "end": "2024-09-03"
+ },
+ {
+  "id": "42XCLGtpuCZkzqe4dc6S",
+  "name": "Ranking is experiencing an ongoing issue.",
+  "service": "Ranking",
+  "start": "2024-08-15",
+  "end": "2024-08-20"
+ },
+ {
+  "id": "mFyYTxqTvS3Gp9fD3JP2",
+  "name": "Fresh content indexing issue",
+  "service": "Indexing",
+  "start": "2024-07-08",
+  "end": "2024-07-08"
+ },
+ {
+  "id": "QdUeCQx3LRVbzQ3E7FiD",
+  "name": "June 2024 spam update",
+  "service": "Ranking",
+  "start": "2024-06-20",
+  "end": "2024-06-27"
+ },
+ {
+  "id": "Gjz5TP3aaDRmKsSWgWF4",
+  "name": "Google Search is experiencing an indexing issue",
+  "service": "Indexing",
+  "start": "2024-06-20",
+  "end": "2024-06-20"
+ },
+ {
+  "id": "6xK73KdB1GVcQc2kRtEm",
+  "name": "There&#39;s an ongoing issue with serving some features in Google Search.",
+  "service": "Serving",
+  "start": "2024-05-30",
+  "end": "2024-05-31"
+ },
+ {
+  "id": "iXz2PJfodvyjaVUeqxZE",
+  "name": "March 2024 spam update",
+  "service": "Ranking",
+  "start": "2024-03-05",
+  "end": "2024-03-20"
+ },
+ {
+  "id": "1jW2F89qC2NxJBWGiKxE",
+  "name": "March 2024 core update",
+  "service": "Ranking",
+  "start": "2024-03-05",
+  "end": "2024-04-19"
+ },
+ {
+  "id": "Jh8ty34prbHLqSRiWKqm",
+  "name": "We&#39;re investigating an issue with indexing in Google Search.",
+  "service": "Indexing",
+  "start": "2024-01-31",
+  "end": "2024-02-08"
+ },
+ {
+  "id": "hySMmncEDZ7Xpaf9i32C",
+  "name": "There&#39;s an ongoing issue with the Google homepage for Firefox users on Android devices.",
+  "service": "Serving",
+  "start": "2024-01-08",
+  "end": "2024-01-09"
+ },
+ {
+  "id": "ABYXX7927AzqGbGTk5tm",
+  "name": "Google Search is experiencing an indexing issue",
+  "service": "Indexing",
+  "start": "2023-12-21",
+  "end": "2023-12-21"
+ },
+ {
+  "id": "VqRTcmyQCwfpuYeaVNfn",
+  "name": "November 2023 reviews update",
+  "service": "Ranking",
+  "start": "2023-11-08",
+  "end": "2023-12-07"
+ },
+ {
+  "id": "WtY1CQgfqrr2cjxKbyUk",
+  "name": "November 2023 core update",
+  "service": "Ranking",
+  "start": "2023-11-02",
+  "end": "2023-11-28"
+ },
+ {
+  "id": "gNEys4Y3VYpGXWNndADm",
+  "name": "Serving is experiencing an ongoing issue",
+  "service": "Serving",
+  "start": "2023-10-26",
+  "end": "2023-10-26"
+ },
+ {
+  "id": "hJzAUmMsBkMsVpBBatXZ",
+  "name": "Google Search is experiencing an indexing issue",
+  "service": "Indexing",
+  "start": "2023-10-05",
+  "end": "2023-10-05"
+ },
+ {
+  "id": "fCUAy6TvbDMkkLAGcwkj",
+  "name": "Ranking is experiencing an ongoing issue",
+  "service": "Ranking",
+  "start": "2023-10-05",
+  "end": "2023-10-31"
+ },
+ {
+  "id": "VKyoS53ULWzSp8BoDxqk",
+  "name": "October 2023 core update",
+  "service": "Ranking",
+  "start": "2023-10-05",
+  "end": "2023-10-19"
+ },
+ {
+  "id": "NzcEhGMDhbQEdXCS35xL",
+  "name": "October 2023 spam update",
+  "service": "Ranking",
+  "start": "2023-10-04",
+  "end": "2023-10-19"
+ },
+ {
+  "id": "53diuQvcEsgzqXTPBb8p",
+  "name": "September 2023 helpful content update",
+  "service": "Ranking",
+  "start": "2023-09-14",
+  "end": "2023-09-28"
+ },
+ {
+  "id": "nBtYtBeex4GYBbdDS2LX",
+  "name": "August 2023 core update",
+  "service": "Ranking",
+  "start": "2023-08-22",
+  "end": "2023-09-07"
+ },
+ {
+  "id": "QfKM8nXdV39zGE5w2eH1",
+  "name": "Google News indexing is experiencing an ongoing issue",
+  "service": "Indexing",
+  "start": "2023-06-21",
+  "end": "2023-07-14"
+ },
+ {
+  "id": "5XRfC46rorevFt8yN8iR",
+  "name": "April 2023 reviews update",
+  "service": "Ranking",
+  "start": "2023-04-12",
+  "end": "2023-04-25"
+ },
+ {
+  "id": "Cou8Tr74r7EXNthuEsaG",
+  "name": "March 2023 core update",
+  "service": "Ranking",
+  "start": "2023-03-15",
+  "end": "2023-03-28"
+ },
+ {
+  "id": "NDjZ11MEUJb5i62hy5aN",
+  "name": "February 2023 product reviews update",
+  "service": "Ranking",
+  "start": "2023-02-21",
+  "end": "2023-03-07"
+ },
+ {
+  "id": "CxXUEK28vCKqkNocPhKR",
+  "name": "December 2022 link spam update",
+  "service": "Ranking",
+  "start": "2022-12-14",
+  "end": "2023-01-12"
+ },
+ {
+  "id": "XMdX5PmbMvKW4fv3CRvn",
+  "name": "December 2022 helpful content update",
+  "service": "Ranking",
+  "start": "2022-12-05",
+  "end": "2023-01-12"
+ },
+ {
+  "id": "SAeYuxVSo39HHotQNXHr",
+  "name": "October 2022 spam update",
+  "service": "Ranking",
+  "start": "2022-10-19",
+  "end": "2022-10-21"
+ },
+ {
+  "id": "ZYwuBXDhkwaoop2V5epM",
+  "name": "September 2022 product reviews update",
+  "service": "Ranking",
+  "start": "2022-09-20",
+  "end": "2022-09-26"
+ },
+ {
+  "id": "Y2Cg5k2xLJvfNqR58kEt",
+  "name": "September 2022 core update",
+  "service": "Ranking",
+  "start": "2022-09-12",
+  "end": "2022-09-26"
+ },
+ {
+  "id": "sbKc4YSptrSxcUZFDKwU",
+  "name": "August 2022 helpful content update",
+  "service": "Ranking",
+  "start": "2022-08-25",
+  "end": "2022-09-09"
+ },
+ {
+  "id": "Xiid524od7fpCak86sNS",
+  "name": "July 2022 product reviews update",
+  "service": "Ranking",
+  "start": "2022-07-27",
+  "end": "2022-08-02"
+ },
+ {
+  "id": "GHwLLtDS64a7nDng8xhD",
+  "name": "May 2022 core update",
+  "service": "Ranking",
+  "start": "2022-05-25",
+  "end": "2022-06-09"
+ },
+ {
+  "id": "iYWoNu4QXRsQUrzxrbLv",
+  "name": "March 2022 product reviews update",
+  "service": "Ranking",
+  "start": "2022-03-23",
+  "end": "2022-04-06"
+ },
+ {
+  "id": "zDCQR5mxLU3ZrQeQvwqN",
+  "name": "Page experience update for desktop",
+  "service": "Ranking",
+  "start": "2022-02-22",
+  "end": "2022-03-03"
+ },
+ {
+  "id": "hgwP7ei5H1uKbYSeZrBZ",
+  "name": "December 2021 product reviews update",
+  "service": "Ranking",
+  "start": "2021-12-01",
+  "end": "2021-12-21"
+ },
+ {
+  "id": "FncPfR7zRSZ3diemah4o",
+  "name": "November 2021 core update",
+  "service": "Ranking",
+  "start": "2021-11-17",
+  "end": "2021-11-30"
+ },
+ {
+  "id": "AFdXceQVsh1GEfKFvHyD",
+  "name": "November 2021 spam update",
+  "service": "Ranking",
+  "start": "2021-11-03",
+  "end": "2021-11-11"
+ }
+]

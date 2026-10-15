@@ -20,7 +20,7 @@ uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run 
 
 ```
 src/gsc_mcp/
-  cli.py        command line: serve, auth login/status/logout
+  cli.py        command line: serve, auth login/status/logout, audit
   server.py     builds the MCPServer and registers tools and prompts
   config.py     settings from environment variables
   auth.py       OAuth desktop flow and service accounts
@@ -29,10 +29,15 @@ src/gsc_mcp/
   sites.py      resolves what the model calls a site to an exact property
   models.py     tool input and output types (the output schemas)
   prompts.py    workflow prompts
+  updates.py    Google's search updates: bundled history plus the live feed
+  web.py        fenced HTTP for audits (inside the property, public hosts only)
+  crawl.py      sitemap parsing and a page's robots and canonical signals
+  store.py      SQLite store that lets indexing audits span several days
   tools/        one module per area; each has register(mcp, deps)
 scripts/
-  probe_compat.py   checks the guard rules against the live API
-  smoke_stdio.py    runs the built server over stdio (used in CI)
+  probe_compat.py           checks the guard rules against the live API
+  smoke_stdio.py            runs the built server over stdio (used in CI)
+  update_google_updates.py  refreshes the bundled history of Google updates
 tests/              unit tests, in-memory MCP tests, opt-in live tests
 ```
 
@@ -61,12 +66,16 @@ property with traffic, and include the output in your pull request.
   `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `ci:`, `chore:`.
 - Add a line under **Unreleased** in `CHANGELOG.md` for anything users would notice.
 - Tool names, parameters and output fields are public API: changing them is a breaking
-  change.
+  change. To rename a tool in a minor release, keep the old name working through
+  `DEPRECATED_ALIASES` in `tools/__init__.py`, list it under **Deprecated** in the
+  changelog, and remove it in the next major release.
 
 ## Releasing (maintainers)
 
-1. Update the version in `pyproject.toml` and `server.json` (both places in it), and move
-   the **Unreleased** changelog entries under the new version.
+1. Refresh the bundled update history with
+   `uv run python scripts/update_google_updates.py`, update the version in
+   `pyproject.toml` and `server.json` (both places in it), and move the **Unreleased**
+   changelog entries under the new version.
 2. Commit, then tag `vX.Y.Z` and push the tag. The release workflow checks that the
    versions match the tag, tests, builds, publishes to PyPI with trusted publishing and
    attestations, publishes to the MCP Registry and creates the GitHub release.
