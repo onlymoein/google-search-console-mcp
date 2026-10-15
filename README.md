@@ -34,9 +34,9 @@ during an indexing audit. It stores your login and your audits' progress, nothin
   quota, carries on where it stopped the next day, and can check each live page against
   what Google last saw.
 - **Everything the API can do, with guard rails.** Reads and writes are both on: it can add
-  and remove properties and submit and remove sitemaps. Tools that change things are marked
-  as such (deletes as destructive), so clients ask before running them, and deletes need
-  the property's exact name. Turn writes off with `GSC_ENABLE_WRITES=0`.
+  and remove properties and submit and remove sitemaps. Changes need the property's exact
+  name, and the tools that make them are marked as writes (deletes as destructive), which
+  clients can use to ask before running them. Turn writes off with `GSC_ENABLE_WRITES=0`.
 - **Structured output.** Every tool declares an output schema, rows come back as named
   fields, and every analytics result includes the exact request sent to Google.
 - **Full API coverage**: search analytics (all search types, filters, data states,
@@ -153,10 +153,12 @@ When `GSC_SERVICE_ACCOUNT_FILE` is set it takes precedence over any OAuth login.
 tool its `source` selects, until it is removed in 2.0.0.
 
 Four tools make changes: `submit_sitemap`, `delete_sitemap`, `add_site` and `delete_site`.
-They are annotated as writes (deletes as destructive), so well-behaved clients ask before
-running them, and they accept only a property's exact `site_url`. These four are every
-change Google's API allows: it cannot request indexing, remove URLs from search, or
-manage users and settings. Set `GSC_ENABLE_WRITES=0` for a server without them.
+They accept only a property's exact `site_url`, and a sitemap must belong to that property.
+They are annotated as writes (deletes as destructive) and tell the model to confirm with
+you first, but the server does not ask you itself: whether you see a prompt depends on
+your client's permission settings. These four are every change Google's API allows: it
+cannot request indexing, remove URLs from search, or manage users and settings. Set
+`GSC_ENABLE_WRITES=0` for a server without them.
 
 Sites can be given as `sc-domain:example.com`, `https://www.example.com/`, a bare
 `example.com`, or any URL on the site. Anything but the exact property is resolved against

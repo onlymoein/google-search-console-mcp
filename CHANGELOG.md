@@ -6,12 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-15
+
 ### Changed
 
 - Write tools are on by default: `add_site`, `delete_site`, `submit_sitemap` and
-  `delete_sitemap` are always available unless `GSC_ENABLE_WRITES=0`. They keep their
-  write and destructive annotations, so clients ask before running them, and deletes still
-  need the exact property.
+  `delete_sitemap` are always available unless `GSC_ENABLE_WRITES=0`. They still need the
+  exact property and keep their write and destructive annotations; whether you are asked
+  before one runs depends on your client's permission settings.
 - `auth login` asks for full Search Console access; `--read-only` asks for read access only.
   `--write` is still accepted.
 - A read-only login keeps working for every read instead of failing when writes are on.
@@ -131,7 +133,8 @@ First release.
   with read-only scope unless writes are enabled.
 - Workflow prompts: weekly report, indexing audit, content opportunities.
 
-[Unreleased]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/onlymoein/google-search-console-mcp/compare/v1.0.0...v1.1.0

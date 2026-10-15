@@ -556,7 +556,7 @@ wheels = [
 
 [[package]]
 name = "open-gsc-mcp"
-version = "1.3.0"
+version = "1.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
