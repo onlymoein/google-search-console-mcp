@@ -81,6 +81,16 @@ REJECTED: list[tuple[str, dict[str, Any], str]] = [
         "discover",
     ),
     (
+        "showcase by page",
+        {
+            "search_type": "discover",
+            "dimensions": ["page"],
+            "aggregation_type": "byNewsShowcasePanel",
+            "filters": [flt("searchAppearance", "equals", "NEWS_SHOWCASE")],
+        },
+        "group by date or country",
+    ),
+    (
         "showcase without filter",
         {
             "search_type": "discover",
@@ -173,6 +183,20 @@ ACCEPTED: list[tuple[str, dict[str, Any]]] = [
 @pytest.mark.parametrize("overrides", [c[1] for c in ACCEPTED], ids=[c[0] for c in ACCEPTED])
 def test_accepts(overrides: dict[str, Any]) -> None:
     query(**overrides)
+
+
+def test_showcase_lists_every_fix_at_once() -> None:
+    with pytest.raises(GuardError) as raised:
+        query(
+            search_type="googleNews",
+            dimensions=["page"],
+            aggregation_type="byNewsShowcasePanel",
+            filters=[flt("page", "contains", "/news/")],
+        )
+    message = str(raised.value)
+    assert "group by date or country" in message
+    assert "remove the page filter" in message
+    assert '"expression": "NEWS_SHOWCASE"' in message
 
 
 def test_normalizes_country_and_device() -> None:

@@ -5,8 +5,9 @@ The API is strict: `sc-domain:example.com`, `https://example.com/` and
 empty result or a 403 rather than a helpful error. Resolution happens against the
 account's real property list, so the model never has to guess the format.
 
-Read tools resolve loosely (a bare domain finds its property). Write tools demand the exact
-property, so a retried or sloppy delete can never land on a broader property.
+Read tools resolve loosely: a bare domain or any URL on the site finds the property that
+owns it. Write tools demand the exact property, so a retried or sloppy delete can never land
+on a broader property.
 """
 
 from __future__ import annotations
@@ -109,6 +110,19 @@ class Resolution:
     def changed(self) -> bool:
         return self.site_url != self.requested
 
+    @property
+    def note(self) -> str | None:
+        """How site_url was resolved, for the result's notes; None if it was used as given."""
+        if not self.changed:
+            return None
+        note = f"Resolved {self.requested!r} to the property {self.site_url!r}."
+        if _is_page(self.requested):
+            note += (
+                " That is a page URL and these results cover the whole property; filter by "
+                "page to limit them to that page."
+            )
+        return note
+
 
 class SiteResolver:
     """Caches the property list briefly; refetches once on a miss in case it just changed."""
@@ -198,21 +212,17 @@ def match(requested: str, properties: list[Property]) -> Property:
     parsed = parse_url(url)
     if parsed is None:
         raise _not_found(value, properties)
-    has_path = parsed.path != "/" or "?" in value
 
-    if "://" in value or has_path:
-        # A specific URL that is not itself a property: don't silently widen or narrow the
-        # scope. Name the properties that contain it so the model can choose and filter.
+    if "://" in value or _is_page(value):
+        # A URL that is not itself a property: the property that owns it. Domain properties
+        # come first, as for bare domains; then the URL-prefix one with the longest path.
         containing = [p for p in properties if p.contains(url)]
-        if len(containing) == 1 and not has_path:
-            return containing[0]
-        hint = ""
-        if containing and has_path:
-            hint = (
-                " It is a URL inside a property, not a property itself: pass one of these as "
-                "site_url and filter by page instead."
-            )
-        raise _not_found(value, containing or properties, extra=hint)
+        if not containing:
+            raise _not_found(value, properties)
+        domains = [p for p in containing if p.is_domain]
+        if domains:
+            return max(domains, key=lambda p: len(p.domain))
+        return max(containing, key=lambda p: len(p.site_url))
 
     host = parsed.host
     domains = [
@@ -236,7 +246,13 @@ def match(requested: str, properties: list[Property]) -> Property:
     raise _not_found(value, related or properties)
 
 
-def _not_found(value: str, candidates: list[Property], *, extra: str = "") -> SiteNotFoundError:
+def _is_page(value: str) -> bool:
+    """Whether a site_url names a page (a path or query) rather than a whole site."""
+    parsed = parse_url(value if "://" in value else f"https://{value}")
+    return parsed is not None and (parsed.path != "/" or "?" in value)
+
+
+def _not_found(value: str, candidates: list[Property]) -> SiteNotFoundError:
     if not candidates:
         return SiteNotFoundError(
             f"{value!r} is not available: this account cannot see any Search Console "
@@ -246,7 +262,7 @@ def _not_found(value: str, candidates: list[Property], *, extra: str = "") -> Si
     listed = ", ".join(repr(p.site_url) for p in candidates[:20])
     more = f" (and {len(candidates) - 20} more)" if len(candidates) > 20 else ""
     return SiteNotFoundError(
-        f"{value!r} is not a property this account can access.{extra} "
+        f"{value!r} is not a property this account can access. "
         f"Candidates: {listed}{more}. Domain properties look like 'sc-domain:example.com'; "
         "URL-prefix properties look like 'https://www.example.com/'."
     )

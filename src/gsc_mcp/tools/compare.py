@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Literal
 import anyio
 from pydantic import Field
 
-from gsc_mcp.dates import HISTORY_MONTHS, parse_date, span_days
+from gsc_mcp.dates import FRESH_DAYS, HISTORY_MONTHS, parse_date, span_days
 from gsc_mcp.errors import GSCError, GuardError
 from gsc_mcp.guards import NO_QUERY_TYPES, build_query, check_dates, check_equal_periods
 from gsc_mcp.models import (
@@ -30,7 +30,6 @@ if TYPE_CHECKING:
 
 SortBy = Literal["clicks_change", "impressions_change", "clicks", "impressions"]
 DEFAULT_DAYS = 28
-FINAL_LAG_DAYS = 3
 
 
 def register(mcp: MCPServer, deps: Deps) -> None:
@@ -72,7 +71,14 @@ def register(mcp: MCPServer, deps: Deps) -> None:
                 "period would read as a decline against a complete baseline."
             ),
         ] = "final",
-        sort_by: SortBy = "clicks_change",
+        sort_by: Annotated[
+            SortBy,
+            Field(
+                description="clicks_change (default) and impressions_change rank the biggest "
+                "gains and losses first; ties fall back to the other metric's change, then "
+                "current impressions. clicks and impressions rank by the current period."
+            ),
+        ] = "clicks_change",
         row_limit: Annotated[int, Field(ge=1, le=1000, description="Rows to return.")] = 50,
         fetch_limit: Annotated[
             int,
@@ -136,24 +142,41 @@ def register(mcp: MCPServer, deps: Deps) -> None:
         ) or ComparedRow(keys={}, current=_zero(), previous=_zero())
 
         rows: list[ComparedRow] = []
+        cut_off: list[str] = []
         if dims:
-            cur = _by_key(dims, results["current_rows"], with_position)
-            prev = _by_key(dims, results["previous_rows"], with_position)
+            cur_data, prev_data = results["current_rows"], results["previous_rows"]
+            cur = _by_key(dims, cur_data, with_position)
+            prev = _by_key(dims, prev_data, with_position)
+            # A period that returned fewer rows than fetch_limit is complete, so a key
+            # missing from it had no traffic there. One that hit the limit may have cut it.
+            cur_complete = len(cur_data.get("rows", [])) < fetch_limit
+            prev_complete = len(prev_data.get("rows", [])) < fetch_limit
+            cut_off = [
+                label
+                for label, complete in (("current", cur_complete), ("previous", prev_complete))
+                if not complete
+            ]
             for key in cur.keys() | prev.keys():
-                row = _compare(dict(zip(dims, key, strict=True)), cur.get(key), prev.get(key))
+                row = _compare(
+                    dict(zip(dims, key, strict=True)),
+                    cur[key] if key in cur else _zero() if cur_complete else None,
+                    prev[key] if key in prev else _zero() if prev_complete else None,
+                )
                 if row is not None:
                     rows.append(row)
-            rows.sort(key=lambda r: _sort_value(r, sort_by), reverse=True)
+            # Sorting is stable: keys alphabetically first, so full ties keep a fixed order.
+            rows.sort(key=lambda r: tuple(r.keys.values()))
+            rows.sort(key=lambda r: _sort_key(r, sort_by), reverse=True)
 
         notes: list[str] = []
-        if resolution.changed:
+        if resolution.note:
+            notes.append(resolution.note)
+        if cut_off:
             notes.append(
-                f"Resolved {resolution.requested!r} to the property {resolution.site_url!r}."
-            )
-        if dims:
-            notes.append(
-                f"Each period's top {fetch_limit} rows were joined. A key missing from one "
-                "period (change is null) may simply rank below that cut-off."
+                f"The {' and '.join(cut_off)} period returned the full fetch_limit of "
+                f"{fetch_limit:,} rows, so a key missing from it may just rank below that "
+                "cut-off; those rows have change null. Raise fetch_limit (up to 25,000) to "
+                "join more."
             )
         if data_state == "all":
             notes.append(
@@ -161,7 +184,10 @@ def register(mcp: MCPServer, deps: Deps) -> None:
                 "days in the current period may be undercounted."
             )
         if "query" in dims:
-            notes.append("Rare (anonymized) queries are omitted from rows but counted in totals.")
+            notes.append(
+                "Rare (anonymized) queries are omitted from rows but counted in totals, so a "
+                "query shown with zeros in one period may have had a few impressions there."
+            )
 
         return ComparisonResult(
             site_url=resolution.site_url,
@@ -187,7 +213,7 @@ def _periods(
     cur_end = (
         parse_date(current_end, field="current_end")
         if current_end
-        else today - timedelta(days=FINAL_LAG_DAYS)
+        else today - timedelta(days=FRESH_DAYS)
     )
     cur_start = (
         parse_date(current_start, field="current_start")
@@ -282,16 +308,20 @@ def _compare(
     return ComparedRow(keys=keys, current=current, previous=previous, change=change)
 
 
-def _sort_value(row: ComparedRow, sort_by: SortBy) -> float:
-    if sort_by == "clicks":
-        return row.current.clicks if row.current else -1
-    if sort_by == "impressions":
-        return row.current.impressions if row.current else -1
+def _sort_key(row: ComparedRow, sort_by: SortBy) -> tuple[int, ...]:
+    """Largest first. Most keys have no clicks in either period, so ties fall back to the
+    other metric and then current impressions instead of landing in arbitrary order."""
+    current = row.current
+    if sort_by in ("clicks", "impressions"):
+        if current is None:
+            return (-1, -1)
+        pair = (current.clicks, current.impressions)
+        return pair if sort_by == "clicks" else pair[::-1]
     if row.change is not None:
-        return abs(row.change.clicks if sort_by == "clicks_change" else row.change.impressions)
-    # Present in one period only: rank by the traffic that appeared or disappeared, so new
-    # winners and vanished pages surface instead of sinking below unchanged rows.
-    side = row.current or row.previous
-    if side is None:
-        return -1
-    return side.clicks if sort_by == "clicks_change" else side.impressions
+        clicks, impressions = abs(row.change.clicks), abs(row.change.impressions)
+    else:
+        # Missing from a period that hit fetch_limit: rank by the traffic on the known side.
+        side = row.current or row.previous or _zero()
+        clicks, impressions = side.clicks, side.impressions
+    first, second = (clicks, impressions) if sort_by == "clicks_change" else (impressions, clicks)
+    return (first, second, current.impressions if current else 0)

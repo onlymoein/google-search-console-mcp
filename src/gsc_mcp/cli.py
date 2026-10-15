@@ -124,10 +124,23 @@ def _status(settings: Settings) -> int:
 
 def _logout(settings: Settings) -> int:
     token_file = settings.resolved_token_file
-    if auth.logout(token_file):
-        print(f"Signed out: revoked the login and deleted {token_file}")
-    else:
+    outcome = auth.logout(token_file)
+    if outcome is None:
         print(f"No saved login at {token_file}")
+    elif outcome == "revoked":
+        print(f"Signed out: revoked the login at Google and deleted {token_file}")
+    elif outcome == "unreachable":
+        print(
+            f"Signed out: deleted {token_file}, but Google could not be reached to revoke "
+            "the login. To revoke it, remove this app at https://myaccount.google.com/permissions"
+        )
+    else:
+        reason = (
+            "it held no refresh token"
+            if outcome == "no_token"
+            else "Google had already expired or revoked it"
+        )
+        print(f"Signed out: deleted {token_file}. Nothing to revoke: {reason}.")
     return 0
 
 

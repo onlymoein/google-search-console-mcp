@@ -13,6 +13,9 @@ PACIFIC = ZoneInfo("America/Los_Angeles")
 # Search Console keeps 16 months of performance data and about 10 days of hourly data.
 HISTORY_MONTHS = 16
 HOURLY_DAYS = 10
+# About the last 3 days (today and the 2 before) are still being processed, so the day
+# before them is usually the latest final one.
+FRESH_DAYS = 3
 
 
 def today_pacific() -> date:

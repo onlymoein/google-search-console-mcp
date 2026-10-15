@@ -63,8 +63,9 @@ def register(mcp: MCPServer, deps: Deps) -> None:
     ) -> AnalyticsResult:
         """Clicks, impressions, CTR and average position from the Performance report, grouped
         by dimensions and filtered. Rows are sorted by clicks. Invalid combinations are
-        rejected with an explanation before Google is called. For one surface at a time,
-        the query_discover/image/video/news_analytics tools offer only what it supports."""
+        rejected with an explanation before Google is called. For Discover, Images, video,
+        Google News or the News tab, the matching query_*_analytics tool offers only what
+        that surface supports."""
         return await run_analytics(
             deps,
             site_url=site_url,

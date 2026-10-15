@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from gsc_mcp.errors import GuardError, SiteNotFoundError
-from gsc_mcp.sites import Property, SiteResolver, exact_match, match
+from gsc_mcp.sites import Property, Resolution, SiteResolver, exact_match, match
 
 DOMAIN = Property("sc-domain:example.com", "siteOwner")
 WWW = Property("https://www.example.com/", "siteFullUser")
@@ -30,11 +30,37 @@ def test_match(requested: str, expected: Property) -> None:
     assert match(requested, ALL) == expected
 
 
-def test_url_inside_a_property_names_the_candidates() -> None:
-    with pytest.raises(SiteNotFoundError, match="filter by page") as raised:
-        match("https://www.example.com/blog/post-1", ALL)
-    assert "sc-domain:example.com" in str(raised.value)
-    assert "https://shop.other.org/" not in str(raised.value)
+@pytest.mark.parametrize(
+    ("requested", "properties", "expected"),
+    [
+        # A domain property owns every URL under it, so it wins, as for bare domains.
+        ("https://www.example.com/blog/post-1", ALL, DOMAIN),
+        ("http://example.com/calendar", ALL, DOMAIN),
+        # Otherwise the URL-prefix property with the longest matching path.
+        ("https://www.example.com/blog/post-1", [WWW, BLOG, SHOP], BLOG),
+        ("https://www.example.com/calendar?x=1", [WWW, BLOG, SHOP], WWW),
+        ("www.example.com/calendar", [WWW, SHOP], WWW),
+    ],
+)
+def test_page_url_resolves_to_the_property_that_owns_it(
+    requested: str, properties: list[Property], expected: Property
+) -> None:
+    assert match(requested, properties) == expected
+
+
+def test_page_url_outside_every_property_lists_them() -> None:
+    with pytest.raises(SiteNotFoundError, match="Candidates") as raised:
+        match("http://www.example.com/a", [WWW, SHOP])
+    assert "'https://www.example.com/'" in str(raised.value)
+
+
+def test_resolution_note_warns_that_a_page_url_means_the_whole_property() -> None:
+    assert Resolution("sc-domain:example.com", "sc-domain:example.com").note is None
+    site = Resolution("sc-domain:example.com", "example.com").note
+    assert site == "Resolved 'example.com' to the property 'sc-domain:example.com'."
+    page = Resolution("sc-domain:example.com", "https://example.com/calendar").note
+    assert page is not None
+    assert "whole property" in page
 
 
 def test_ambiguous_url_prefixes() -> None:

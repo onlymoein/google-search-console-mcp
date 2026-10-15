@@ -19,7 +19,7 @@ import os
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 import anyio
 import anyio.to_thread
@@ -222,16 +222,36 @@ def login(
     return credentials
 
 
-def logout(token_file: Path) -> bool:
-    """Revoke the saved refresh token (best effort) and delete the file."""
+RevokeOutcome = Literal["revoked", "no_token", "rejected", "unreachable"]
+
+
+def logout(token_file: Path) -> RevokeOutcome | None:
+    """Revoke the saved login at Google and delete the file; None if there was no file.
+
+    The file is deleted whatever Google answers: the user asked for it to be gone, and a
+    login Google will not revoke has usually expired or been revoked already.
+    """
     if not token_file.is_file():
-        return False
-    with contextlib.suppress(ValueError, OSError, requests.RequestException):
-        refresh_token = json.loads(token_file.read_text(encoding="utf-8")).get("refresh_token")
-        if refresh_token:
-            requests.post(REVOKE_URL, data={"token": refresh_token}, timeout=10)
+        return None
+    outcome = _revoke(token_file)
     token_file.unlink()
-    return True
+    return outcome
+
+
+def _revoke(token_file: Path) -> RevokeOutcome:
+    try:
+        saved = json.loads(token_file.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return "no_token"
+    refresh_token = saved.get("refresh_token") if isinstance(saved, dict) else None
+    if not refresh_token:
+        return "no_token"
+    try:
+        response = requests.post(REVOKE_URL, data={"token": refresh_token}, timeout=10)
+    except requests.RequestException:
+        return "unreachable"
+    # Google answers 400 invalid_token for a login that already expired or was revoked.
+    return "revoked" if response.ok else "rejected"
 
 
 @dataclass(slots=True)

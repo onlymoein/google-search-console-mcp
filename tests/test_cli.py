@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from gsc_mcp import __version__
+from gsc_mcp import __version__, auth
 from gsc_mcp.cli import main
 
 
@@ -65,6 +65,28 @@ def test_login_is_pointless_with_a_service_account(
 def test_logout_without_login(capsys: pytest.CaptureFixture[str]) -> None:
     assert run("auth", "logout") == 0
     assert "No saved login" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("outcome", "expected"),
+    [
+        ("revoked", "revoked the login at Google"),
+        ("no_token", "Nothing to revoke: it held no refresh token"),
+        ("rejected", "Nothing to revoke: Google had already expired or revoked it"),
+        ("unreachable", "Google could not be reached"),
+    ],
+)
+def test_logout_says_whether_it_revoked(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], outcome: str, expected: str
+) -> None:
+    def logout(token_file: Path) -> str:
+        return outcome
+
+    monkeypatch.setattr(auth, "logout", logout)
+    assert run("auth", "logout") == 0
+    out = capsys.readouterr().out
+    assert expected in out
+    assert ("revoked the login" in out) == (outcome == "revoked")
 
 
 def test_bad_configuration_is_reported_without_a_traceback(

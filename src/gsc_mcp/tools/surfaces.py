@@ -1,4 +1,5 @@
-"""One tool per search surface: Discover, Google Images, video search and news.
+"""One tool per search surface: Discover, Google Images, video search, Google News and the
+News tab of Search.
 
 Each tool exposes only what its surface supports, so the schema itself keeps the model away
 from requests Google would reject. Discover, for example, offers no query, device or
@@ -7,18 +8,20 @@ position, and these rules were checked against the live API (scripts/probe_compa
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import TYPE_CHECKING, Annotated
 
 from pydantic import Field
 
 from gsc_mcp.models import (
-    AggregationType,
     AnalyticsResult,
-    BreakdownDimension,
     Dimension,
     DimensionFilter,
     DiscoverDimension,
     DiscoverFilter,
+    GoogleNewsDimension,
+    GoogleNewsFilter,
+    PageAggregation,
+    SearchAggregation,
 )
 from gsc_mcp.tools._common import (
     LARGE_RESULT,
@@ -44,13 +47,26 @@ SearchDimensions = Annotated[
         "searchAppearance must be the only dimension."
     ),
 ]
-PageAggregation = Annotated[
-    Literal["auto", "byPage", "byNewsShowcasePanel"],
+SearchAggregationParam = Annotated[
+    SearchAggregation,
     Field(
-        description="'auto' aggregates by page here. byNewsShowcasePanel needs a "
-        "searchAppearance equals NEWS_SHOWCASE filter."
+        description="'auto' is right almost always. byProperty cannot be used with page "
+        "grouping or filters."
     ),
 ]
+ShowcaseAggregationParam = Annotated[
+    PageAggregation,
+    Field(
+        description="'auto' aggregates by page. byNewsShowcasePanel counts News Showcase "
+        "panels instead: it needs the filter searchAppearance equals NEWS_SHOWCASE and cannot "
+        "group or filter by page, so dimensions default to ['date'] with it."
+    ),
+]
+
+
+def page_default(aggregation_type: str) -> list[str]:
+    """Page is the natural grouping here, except for byNewsShowcasePanel, which forbids it."""
+    return ["date"] if aggregation_type == "byNewsShowcasePanel" else ["page"]
 
 
 def register(mcp: MCPServer, deps: Deps) -> None:
@@ -61,13 +77,16 @@ def register(mcp: MCPServer, deps: Deps) -> None:
         end_date: EndDate = None,
         dimensions: Annotated[
             list[DiscoverDimension] | None,
-            Field(description="Group rows by these. Omit for ['page']; [] for totals."),
+            Field(
+                description="Group rows by these. Omit for ['page'] (['date'] with "
+                "byNewsShowcasePanel); [] for totals."
+            ),
         ] = None,
         filters: Annotated[
             list[DiscoverFilter] | None, Field(description="Filters, combined with AND.")
         ] = None,
         data_state: DataStateParam = "all",
-        aggregation_type: PageAggregation = "auto",
+        aggregation_type: ShowcaseAggregationParam = "auto",
         row_limit: RowLimit = 100,
         start_row: StartRow = 0,
     ) -> AnalyticsResult:
@@ -79,7 +98,7 @@ def register(mcp: MCPServer, deps: Deps) -> None:
             site_url=site_url,
             start_date=start_date,
             end_date=end_date,
-            dimensions=["page"] if dimensions is None else dimensions,
+            dimensions=page_default(aggregation_type) if dimensions is None else dimensions,
             search_type="discover",
             filters=[f.general() for f in filters or []],
             data_state=data_state,
@@ -96,7 +115,7 @@ def register(mcp: MCPServer, deps: Deps) -> None:
         dimensions: SearchDimensions = None,
         filters: Filters = None,
         data_state: DataStateParam = "all",
-        aggregation_type: AggregationType = "auto",
+        aggregation_type: SearchAggregationParam = "auto",
         row_limit: RowLimit = 100,
         start_row: StartRow = 0,
     ) -> AnalyticsResult:
@@ -125,7 +144,7 @@ def register(mcp: MCPServer, deps: Deps) -> None:
         dimensions: SearchDimensions = None,
         filters: Filters = None,
         data_state: DataStateParam = "all",
-        aggregation_type: AggregationType = "auto",
+        aggregation_type: SearchAggregationParam = "auto",
         row_limit: RowLimit = 100,
         start_row: StartRow = 0,
     ) -> AnalyticsResult:
@@ -146,51 +165,66 @@ def register(mcp: MCPServer, deps: Deps) -> None:
             start_row=start_row,
         )
 
-    @mcp.tool(title="Query news performance", annotations=READ_ONLY, meta=LARGE_RESULT)
-    async def query_news_analytics(
+    @mcp.tool(title="Query Google News performance", annotations=READ_ONLY, meta=LARGE_RESULT)
+    async def query_google_news_analytics(
         site_url: SiteUrl,
-        source: Annotated[
-            Literal["google_news", "news_tab"],
-            Field(
-                description="'google_news': news.google.com and the Google News app (no "
-                "queries, no position). 'news_tab': the News tab in Google Search."
-            ),
-        ] = "google_news",
         start_date: StartDate = None,
         end_date: EndDate = None,
         dimensions: Annotated[
-            list[BreakdownDimension] | None,
+            list[GoogleNewsDimension] | None,
             Field(
-                description="Group rows by these. Omit for ['page'] (google_news) or "
-                "['query'] (news_tab); [] for totals. google_news has no query."
+                description="Group rows by these. Omit for ['page'] (['date'] with "
+                "byNewsShowcasePanel); [] for totals."
             ),
         ] = None,
-        filters: Filters = None,
+        filters: Annotated[
+            list[GoogleNewsFilter] | None, Field(description="Filters, combined with AND.")
+        ] = None,
         data_state: DataStateParam = "all",
-        aggregation_type: Annotated[
-            AggregationType,
-            Field(
-                description="'auto' is right almost always. google_news is aggregated by "
-                "page (no byProperty); byNewsShowcasePanel needs a searchAppearance equals "
-                "NEWS_SHOWCASE filter and google_news."
-            ),
-        ] = "auto",
+        aggregation_type: ShowcaseAggregationParam = "auto",
         row_limit: RowLimit = 100,
         start_row: StartRow = 0,
     ) -> AnalyticsResult:
-        """News performance: Google News (news.google.com and the app) or the News tab in
-        Google Search. Clicks, impressions and CTR by page, country, device or date; the
-        News tab also has queries and average position."""
-        google_news = source == "google_news"
-        if dimensions is None:
-            dimensions = ["page"] if google_news else ["query"]
+        """Google News performance (news.google.com and the Google News app): clicks,
+        impressions and CTR by page, country, device or date. Google News reports no
+        queries and no average position. For the News tab in Google Search, use
+        query_news_tab_analytics."""
         return await run_analytics(
             deps,
             site_url=site_url,
             start_date=start_date,
             end_date=end_date,
-            dimensions=dimensions,
-            search_type="googleNews" if google_news else "news",
+            dimensions=page_default(aggregation_type) if dimensions is None else dimensions,
+            search_type="googleNews",
+            filters=[f.general() for f in filters or []],
+            data_state=data_state,
+            aggregation_type=aggregation_type,
+            row_limit=row_limit,
+            start_row=start_row,
+        )
+
+    @mcp.tool(title="Query News tab performance", annotations=READ_ONLY, meta=LARGE_RESULT)
+    async def query_news_tab_analytics(
+        site_url: SiteUrl,
+        start_date: StartDate = None,
+        end_date: EndDate = None,
+        dimensions: SearchDimensions = None,
+        filters: Filters = None,
+        data_state: DataStateParam = "all",
+        aggregation_type: SearchAggregationParam = "auto",
+        row_limit: RowLimit = 100,
+        start_row: StartRow = 0,
+    ) -> AnalyticsResult:
+        """Performance in the News tab of Google Search: clicks, impressions, CTR and
+        average position, by query, page, country, device or date. For news.google.com and
+        the Google News app, use query_google_news_analytics."""
+        return await run_analytics(
+            deps,
+            site_url=site_url,
+            start_date=start_date,
+            end_date=end_date,
+            dimensions=["query"] if dimensions is None else dimensions,
+            search_type="news",
             filters=filters or [],
             data_state=data_state,
             aggregation_type=aggregation_type,

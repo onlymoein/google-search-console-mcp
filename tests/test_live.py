@@ -74,8 +74,8 @@ async def test_sitemaps(live: Client, site: str) -> None:
         ("query_discover_analytics", {}),
         ("query_image_analytics", {}),
         ("query_video_analytics", {}),
-        ("query_news_analytics", {}),
-        ("query_news_analytics", {"source": "news_tab"}),
+        ("query_google_news_analytics", {}),
+        ("query_news_tab_analytics", {}),
         ("list_search_appearances", {}),
     ],
 )

@@ -6,6 +6,42 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- `query_news_analytics` is split into `query_google_news_analytics` and
+  `query_news_tab_analytics`, so each schema offers only what its source supports: Google
+  News has no query dimension and no `byProperty`, and the News tab has no
+  `byNewsShowcasePanel`.
+- A page URL as `site_url` now resolves to the property that contains it, with a note that
+  the results cover the whole property. It used to be refused.
+- `query_image_analytics` and `query_video_analytics` no longer offer
+  `byNewsShowcasePanel`, which Google only accepts for Discover and Google News.
+- With `byNewsShowcasePanel`, the Discover and Google News tools group by date unless told
+  otherwise, since that aggregation cannot group by page.
+- The server no longer advertises a `resources` capability; it has no resources.
+
+### Fixed
+
+- `compare_periods` ranked the many keys with no clicks in either period in arbitrary order,
+  so its biggest gainers and losers (and the weekly report built on them) were noise. Ties
+  now fall back to the change in impressions, then current impressions.
+- `compare_periods` reported `change: null` for every key missing from one period. When that
+  period returned fewer rows than `fetch_limit`, its data is complete and the key had no
+  traffic there, so the change is now computed against zeros. The cut-off warning appears
+  only when a period actually hit the limit.
+- Arguments the input schema rejects (`row_limit` out of range, more than 50 URLs, a
+  dimension a surface does not have) are explained in plain words instead of pydantic's
+  report.
+- Results whose range reaches the last ~3 days now say that those days are still changing
+  when not grouped by date, since Google only reports `first_incomplete_date` for date
+  groupings.
+- `byNewsShowcasePanel` errors say exactly what to change, including the filter it needs.
+- `auth logout` no longer claims to have revoked a login it could not revoke: it says
+  whether Google revoked it, had nothing to revoke, or could not be reached.
+- A future end date was described as silently returning no rows. Google actually ignores
+  the days after today; only a range wholly in the future comes back empty. Such end dates
+  are still refused, with an accurate message.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added

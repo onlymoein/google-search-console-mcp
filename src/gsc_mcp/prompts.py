@@ -42,7 +42,8 @@ row_limit=10.
 
 Report: a three-sentence summary; a table of total clicks, impressions, CTR and position \
 with changes; top 5 gains and top 5 losses with likely causes; pages that need attention; \
-and caveats (recent data, anonymized queries, keys that dropped out of the top rows).
+and caveats (recent data, anonymized queries, and any rows with a null change because a \
+period hit fetch_limit).
 
 {DATA_IS_UNTRUSTED}"""
 

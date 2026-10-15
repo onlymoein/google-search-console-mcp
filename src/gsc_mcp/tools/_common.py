@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from gsc_mcp.dates import parse_date, today_pacific
+from gsc_mcp.dates import FRESH_DAYS, parse_date, today_pacific
 from gsc_mcp.guards import NO_QUERY_TYPES, build_query
 from gsc_mcp.models import AnalyticsResult, DataState, Row
 
@@ -46,7 +46,8 @@ SiteUrl = Annotated[
     Field(
         description="The property, as listed by list_sites: 'sc-domain:example.com' for a "
         "domain property or 'https://www.example.com/' for a URL-prefix property. A bare "
-        "domain such as 'example.com' is resolved to the matching property."
+        "domain such as 'example.com', or any URL on the site, is resolved to the property "
+        "that contains it."
     ),
 ]
 StartDate = Annotated[
@@ -144,8 +145,8 @@ def analytics_result(
     next_start_row = query.start_row + len(rows) if len(rows) == query.row_limit else None
 
     notes: list[str] = []
-    if resolution.changed:
-        notes.append(f"Resolved {resolution.requested!r} to the property {resolution.site_url!r}.")
+    if resolution.note:
+        notes.append(resolution.note)
     notes.extend(query.notes)
     if not rows:
         notes.append(
@@ -168,7 +169,15 @@ def analytics_result(
         notes.append(f"Data from {incomplete_date} onward is still being processed and may change.")
     if incomplete_hour:
         notes.append(f"Data from {incomplete_hour} onward is still being processed and may change.")
-    if query.data_state == "final" and query.end >= today - timedelta(days=2):
+    first_fresh = today - timedelta(days=FRESH_DAYS - 1)
+    if query.data_state == "all" and query.end >= first_fresh and "date" not in query.dimensions:
+        # Google reports first_incomplete_date only when grouping by date, so say it here.
+        notes.append(
+            f"This range includes {max(query.start, first_fresh)} to {query.end}, which is "
+            "usually still being processed, so these numbers may still change. Add 'date' "
+            "to dimensions to see where incomplete data starts, or use data_state='final'."
+        )
+    if query.data_state == "final" and query.end >= first_fresh:
         notes.append(
             "data_state='final' leaves out the last few days, which are not final yet. "
             "Use data_state='all' to include them."

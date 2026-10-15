@@ -210,9 +210,9 @@ def cases(days_ago: Any) -> list[Case]:
             q(dimensions=["device"], dimensionFilterGroups=[f("device", "equals", "PHONE")]),
         ),
         Case(
-            "future end date",
+            "range in the future",
             "empty",
-            {"startDate": days_ago(2), "endDate": days_ago(-3), "dimensions": ["date"]},
+            {"startDate": days_ago(-1), "endDate": days_ago(-3), "dimensions": ["date"]},
         ),
         Case("rowLimit 25001", "reject", q(**query, rowLimit=25001)),
     ]

@@ -11,12 +11,17 @@ Dimension = Literal["date", "query", "page", "country", "device", "searchAppeara
 HourlyDimension = Literal["query", "page", "country", "device"]
 BreakdownDimension = Literal["date", "query", "page", "country", "device"]
 DiscoverDimension = Literal["date", "page", "country"]
+GoogleNewsDimension = Literal["date", "page", "country", "device"]
 FilterDimension = Literal["query", "page", "country", "device", "searchAppearance"]
 Operator = Literal[
     "equals", "notEquals", "contains", "notContains", "includingRegex", "excludingRegex"
 ]
 DataState = Literal["final", "all"]
 AggregationType = Literal["auto", "byPage", "byProperty", "byNewsShowcasePanel"]
+# Web, image, video and the News tab: News Showcase panels exist only in Discover and Google News.
+SearchAggregation = Literal["auto", "byPage", "byProperty"]
+# Discover and Google News: always aggregated by page, so byProperty does not apply.
+PageAggregation = Literal["auto", "byPage", "byNewsShowcasePanel"]
 
 Row = dict[str, str | int | float]
 
@@ -49,9 +54,16 @@ class DiscoverFilter(_FilterFields):
     dimension: Literal["page", "country", "searchAppearance"]
 
     def general(self) -> DimensionFilter:
-        return DimensionFilter(
-            dimension=self.dimension, operator=self.operator, expression=self.expression
-        )
+        return DimensionFilter.model_validate(self.model_dump())
+
+
+class GoogleNewsFilter(_FilterFields):
+    """A Google News filter. Google News has no query data to filter on."""
+
+    dimension: Literal["page", "country", "device", "searchAppearance"]
+
+    def general(self) -> DimensionFilter:
+        return DimensionFilter.model_validate(self.model_dump())
 
 
 class SiteInfo(BaseModel):
@@ -105,12 +117,15 @@ class MetricChange(BaseModel):
 
 class ComparedRow(BaseModel):
     keys: dict[str, str]
-    current: MetricSet | None
-    previous: MetricSet | None
+    current: MetricSet | None = Field(
+        description="Zeros when the key had no traffic in the period. Null only when the "
+        "period hit fetch_limit, so the key may just rank below the cut-off."
+    )
+    previous: MetricSet | None = Field(description="As for current.")
     change: MetricChange | None = Field(
         default=None,
-        description="Null when the key is missing from one period's fetched rows; that can "
-        "mean it fell outside the top rows rather than that it had no traffic.",
+        description="current minus previous. Null when either side is unknown because its "
+        "period hit fetch_limit.",
     )
 
 

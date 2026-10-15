@@ -2,8 +2,8 @@
 
 Each rule exists because Google either rejects the request with a terse 400 or, worse,
 accepts it and silently returns no rows: an invalid regex, a two-letter country code, an
-unknown device, hourly data older than ten days and future dates all come back as an empty
-200. `scripts/probe_compat.py` re-checks every rule against the live API.
+unknown device, hourly data older than ten days and a range in the future all come back as
+an empty 200. `scripts/probe_compat.py` re-checks every rule against the live API.
 """
 
 from __future__ import annotations
@@ -142,7 +142,7 @@ def check_dates(
     if end > today:
         raise GuardError(
             f"end_date {end} is in the future. Search Console dates are in Pacific Time, "
-            f"where today is {today}; Google silently returns no rows for future dates."
+            f"where today is {today}; end the range on {today} or earlier."
         )
     if hourly:
         earliest = today - timedelta(days=HOURLY_DAYS)
@@ -276,22 +276,30 @@ def check_aggregation(
     if aggregation_type == "byNewsShowcasePanel":
         if search_type not in NO_QUERY_TYPES:
             raise GuardError(
-                "byNewsShowcasePanel only applies to search_type discover or googleNews."
+                "byNewsShowcasePanel only applies to Discover and Google News "
+                "(search_type discover or googleNews)."
             )
-        if uses_page:
-            raise GuardError(
-                "byNewsShowcasePanel cannot be used when grouping or filtering by page."
-            )
-        showcase = [
-            f
-            for f in filters
-            if f.dimension == "searchAppearance"
+        showcase = any(
+            f.dimension == "searchAppearance"
             and f.operator == "equals"
             and f.expression.upper() == "NEWS_SHOWCASE"
-        ]
+            for f in filters
+        )
+        fixes: list[str] = []
+        if "page" in dimensions:
+            fixes.append("group by date or country instead of page (or pass dimensions=[])")
+        if any(f.dimension == "page" for f in filters):
+            fixes.append("remove the page filter")
         if not showcase:
+            fixes.append(
+                'add the filter {"dimension": "searchAppearance", "operator": "equals", '
+                '"expression": "NEWS_SHOWCASE"}'
+            )
+        if fixes:
             raise GuardError(
-                "byNewsShowcasePanel requires a searchAppearance equals NEWS_SHOWCASE filter."
+                "byNewsShowcasePanel counts News Showcase panels, not pages. To use it, "
+                + " and ".join(fixes)
+                + "."
             )
 
 

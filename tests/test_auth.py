@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import requests
 from google.auth.exceptions import RefreshError
 
 from gsc_mcp import auth
@@ -116,18 +117,48 @@ def test_describe(tmp_path: Path, token_file: Path) -> None:
     assert (status.mode, status.exists, status.scopes) == ("service_account", False, [FULL_SCOPE])
 
 
-def test_logout_revokes_and_deletes(monkeypatch: pytest.MonkeyPatch, token_file: Path) -> None:
+def revoke_answering(monkeypatch: pytest.MonkeyPatch, status: int | None) -> list[dict[str, Any]]:
+    """Stub Google's revoke endpoint; status None means Google cannot be reached."""
     posted: list[dict[str, Any]] = []
 
-    def fake_post(url: str, data: dict[str, Any], timeout: int) -> None:
+    def fake_post(url: str, data: dict[str, Any], timeout: int) -> requests.Response:
         posted.append(data)
+        if status is None:
+            raise requests.ConnectionError("offline")
+        response = requests.Response()
+        response.status_code = status
+        return response
 
     monkeypatch.setattr(auth.requests, "post", fake_post)
+    return posted
+
+
+def test_logout_revokes_and_deletes(monkeypatch: pytest.MonkeyPatch, token_file: Path) -> None:
+    posted = revoke_answering(monkeypatch, 200)
     token_file.write_text(token_json([READONLY_SCOPE]))
-    assert auth.logout(token_file) is True
+    assert auth.logout(token_file) == "revoked"
     assert not token_file.exists()
     assert posted == [{"token": "refresh"}]
-    assert auth.logout(token_file) is False
+    assert auth.logout(token_file) is None
+
+
+@pytest.mark.parametrize(
+    ("saved", "status", "outcome"),
+    [
+        (token_json([READONLY_SCOPE]), 400, "rejected"),
+        (token_json([READONLY_SCOPE]), None, "unreachable"),
+        (json.dumps({"token": "access"}), 200, "no_token"),
+        ("not json", 200, "no_token"),
+    ],
+)
+def test_logout_reports_what_happened_and_always_deletes(
+    monkeypatch: pytest.MonkeyPatch, token_file: Path, saved: str, status: int | None, outcome: str
+) -> None:
+    posted = revoke_answering(monkeypatch, status)
+    token_file.write_text(saved)
+    assert auth.logout(token_file) == outcome
+    assert not token_file.exists()
+    assert bool(posted) == (outcome != "no_token")
 
 
 @pytest.mark.anyio

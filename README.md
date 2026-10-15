@@ -22,8 +22,8 @@ It runs on your machine, talks only to Google, and stores nothing but your own l
 
 - **It catches the API's traps.** Google answers many bad requests with an empty result
   instead of an error: an invalid regex, a two-letter country code, hourly data older than
-  ten days, a future date. Other combinations fail with a terse 400. Every one of these is
-  checked before the call and explained in plain words. The rules are
+  ten days, a range in the future. Other combinations fail with a terse 400. Every one of
+  these is checked before the call and explained in plain words. The rules are
   [verified against the live API](scripts/probe_compat.py), not copied from blog posts.
 - **Read-only by default.** Write tools do not exist unless you turn them on, and the login
   only asks Google for read-only access unless you need more.
@@ -32,7 +32,7 @@ It runs on your machine, talks only to Google, and stores nothing but your own l
 - **Full API coverage**: search analytics (all search types, filters, data states,
   pagination), hourly data, search appearances, URL inspection (single and concurrent
   batch), sitemaps and properties, plus a dedicated tool for each search surface (Discover,
-  Images, video, news) that only accepts what that surface supports.
+  Images, video, Google News, the News tab) that only accepts what that surface supports.
 - **Built on the current stack**: MCP Python SDK 2.x (protocol 2026-07-28 and older clients
   alike) and an async client, so batch inspection runs concurrently.
 
@@ -124,10 +124,11 @@ When `GSC_SERVICE_ACCOUNT_FILE` is set it takes precedence over any OAuth login.
 | `query_discover_analytics` | Google Discover by page, country or date. No query, device or position, so the tool doesn't offer them. |
 | `query_image_analytics` | Google Images: queries, pages and positions within image results. |
 | `query_video_analytics` | The Videos tab of Google Search. |
-| `query_news_analytics` | Google News (news.google.com and the app), or the News tab in Search with `source="news_tab"`. |
+| `query_google_news_analytics` | Google News (news.google.com and the app) by page, country, device or date. No query or position. |
+| `query_news_tab_analytics` | The News tab of Google Search, with queries and positions. |
 | `list_search_appearances` | Rich results and other result features the property had: step one of Google's two-step appearance query. |
 | `query_search_appearance` | Step two: one appearance broken down by query, page, country, device or date. |
-| `compare_periods` | Two equal-length periods: totals and per-key changes, absolute and percent. |
+| `compare_periods` | Two equal-length periods: totals and per-key changes, absolute and percent, biggest movers first. |
 | `inspect_url` | Index status, coverage, canonical (Google's versus yours), crawl, robots.txt and rich results for one URL. |
 | `batch_inspect_urls` | Up to 50 URLs concurrently, with progress, per-URL errors and a verdict summary. Stops cleanly when the quota runs out. |
 | `list_sitemaps`, `get_sitemap` | Submitted sitemaps with errors, warnings, pending state and URL counts. |
@@ -136,8 +137,10 @@ With `GSC_ENABLE_WRITES=1` four more tools appear: `submit_sitemap`, `delete_sit
 `add_site` and `delete_site`. They are annotated as writes (deletes as destructive), so
 well-behaved clients ask before running them.
 
-Sites can be given as `sc-domain:example.com`, `https://www.example.com/`, or a bare
-`example.com`, which is resolved against your real property list.
+Sites can be given as `sc-domain:example.com`, `https://www.example.com/`, a bare
+`example.com`, or any URL on the site. Anything but the exact property is resolved against
+your real property list, to the property that contains it; results then say so, and for a
+page URL they note that they cover the whole property.
 
 **Prompts**: `weekly_report`, `indexing_audit` and `content_opportunities` are ready-made
 workflows with concrete dates and exact tool calls.
@@ -170,13 +173,13 @@ uvx open-gsc-mcp auth logout       # revoke and delete the saved login
 | Discover and Google News have no query data (400) and no position; Discover has no device data (400). | Rejects `query` (and `device` for Discover); leaves position out of rows. The surface tools don't even offer them. |
 | `searchAppearance` filters must be an exact, uppercase appearance name for that search type (anything else: 400). | Requires `equals`, uppercases the name, and offers a dedicated step-two tool. |
 | `hour` needs `dataState=hourly_all` and cannot be combined with `date` (400). | A dedicated hourly tool sets both. |
-| Hourly data older than ~10 days, a future end date, an invalid or non-RE2 regex, a two-letter country code or an unknown device all return **zero rows, no error**. | Rejects each before the call. |
+| Hourly data older than ~10 days, a range in the future, an invalid or non-RE2 regex, a two-letter country code or an unknown device all return **zero rows, no error**. | Rejects each before the call, and any end date after today, which is usually a date mistake. |
 | Dates are Pacific Time; 16 months of history. | Uses Pacific Time; clamps the start date and says so. |
 | `byProperty` aggregation fails with page grouping or filters, and for Discover and Google News (400). | Rejects it. |
-| Recent data is incomplete. | Reports `first_incomplete_date` / `first_incomplete_hour`; comparisons default to `final` data. |
+| Recent data is incomplete, but Google only says where it starts when grouping by date. | Reports `first_incomplete_date` / `first_incomplete_hour`, and notes when other groupings include the last ~3 days; comparisons default to `final` data. |
 | At most 25,000 rows per request, top rows only. | Defaults to 100 rows and returns `next_start_row` for paging. |
 | URL Inspection: 2,000 per day and 600 per minute per property. | Batches run 5 at a time and stop cleanly on quota errors. |
-| `siteUrl` must match the property string exactly. | Resolves bare domains and URLs against your property list. |
+| `siteUrl` must match the property string exactly. | Resolves bare domains and URLs to the property that contains them. |
 
 **Not available through Google's API**, so no server can provide them: the generative AI
 (AI Overviews and AI Mode) report, platform properties (Instagram, TikTok, X, YouTube), the
