@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 import anyio
 
 from gsc_mcp import __version__, auth
-from gsc_mcp.auth import FULL_SCOPE, GoogleTokenSource
+from gsc_mcp.auth import GoogleTokenSource, can_write
 from gsc_mcp.client import INSPECTIONS_PER_DAY, SearchConsoleClient
 from gsc_mcp.config import ENV_OAUTH_CLIENT_FILE, Settings, expand_path
 from gsc_mcp.errors import GSCError
@@ -69,11 +69,14 @@ def _parser() -> argparse.ArgumentParser:
         "--client-file",
         help=f"OAuth 'Desktop app' client JSON (absolute path; default: ${ENV_OAUTH_CLIENT_FILE})",
     )
-    login.add_argument(
-        "--write",
+    access = login.add_mutually_exclusive_group()
+    access.add_argument(
+        "--read-only",
         action="store_true",
-        help="also grant write access (needed for GSC_ENABLE_WRITES=1)",
+        help="grant read access only; the tools that make changes will then be refused",
     )
+    # Full access became the default in 1.4.0; --write is still accepted.
+    access.add_argument("--write", action="store_true", help=argparse.SUPPRESS)
     login.add_argument(
         "--no-browser",
         action="store_true",
@@ -131,7 +134,7 @@ def _login(settings: Settings, args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
-    write = args.write or settings.enable_writes
+    write = args.write or (settings.enable_writes and not args.read_only)
     token_file = settings.resolved_token_file
     auth.login(client_file, token_file, write=write, open_browser=not args.no_browser)
     access = "read and write" if write else "read-only"
@@ -144,8 +147,14 @@ def _status(settings: Settings) -> int:
     print(f"Mode:        {status.mode}")
     print(f"Credentials: {status.credential_path} ({'found' if status.exists else 'missing'})")
     if status.scopes:
-        print(f"Access:      {'read and write' if FULL_SCOPE in status.scopes else 'read-only'}")
-    print(f"Writes:      {'enabled' if status.writes_enabled else 'disabled'} (GSC_ENABLE_WRITES)")
+        print(f"Access:      {'read and write' if can_write(status.scopes) else 'read-only'}")
+    writes = "on" if status.writes_enabled else "off"
+    print(f"Write tools: {writes} (GSC_ENABLE_WRITES)")
+    if status.writes_enabled and status.scopes and not can_write(status.scopes):
+        print(
+            "\nThis login can only read, so Google will refuse changes. To allow them, sign "
+            f"in again: {auth.LOGIN_HINT}"
+        )
     if not status.exists:
         if status.mode == "service_account":
             print("\nThe service account key file does not exist. Check GSC_SERVICE_ACCOUNT_FILE.")

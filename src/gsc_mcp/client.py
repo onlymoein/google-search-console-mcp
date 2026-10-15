@@ -213,6 +213,11 @@ def _api_error(response: httpx2.Response) -> ApiError:
         )
     if status == 401:
         hint = "Google rejected the credentials. Run `open-gsc-mcp auth status` to check them."
+    elif status == 403 and "insufficient authentication scopes" in message.lower():
+        hint = (
+            "Your Google login only allows reading, so Google refused this change. To allow "
+            "changes, sign in again in a terminal: `open-gsc-mcp auth login`."
+        )
     elif status == 403:
         hint = (
             "This account has no permission for that resource. Check list_sites for the "

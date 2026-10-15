@@ -60,6 +60,10 @@ over repeated calls (progress is saved; Google allows 2,000 inspections a day).
 platform properties (Instagram, TikTok, X, YouTube), the branded query filter, Core Web \
 Vitals, manual actions and links.
 """
+WRITE_INSTRUCTIONS = """\
+- add_site, delete_site, submit_sitemap and delete_sitemap change the account. Say exactly \
+what will change and get the user's go-ahead before calling them.
+"""
 
 
 class SearchConsoleServer(MCPServer[None]):
@@ -173,7 +177,7 @@ def build_server(
         title="Google Search Console",
         description="Search analytics, URL inspection, sitemaps and sites from the "
         "Google Search Console API.",
-        instructions=INSTRUCTIONS,
+        instructions=INSTRUCTIONS + (WRITE_INSTRUCTIONS if settings.enable_writes else ""),
         version=__version__,
         website_url="https://github.com/onlymoein/google-search-console-mcp",
         log_level=settings.log_level,

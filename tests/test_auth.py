@@ -37,45 +37,35 @@ def token_file(tmp_path: Path) -> Path:
     return tmp_path / "token.json"
 
 
-def test_scopes_are_least_privilege() -> None:
-    assert auth.scopes_for(write=False) == [READONLY_SCOPE]
+def test_scopes() -> None:
     assert auth.scopes_for(write=True) == [FULL_SCOPE]
+    assert auth.scopes_for(write=False) == [READONLY_SCOPE]
+    assert auth.can_write([FULL_SCOPE]) is True
+    assert auth.can_write([READONLY_SCOPE]) is False
 
 
 def test_missing_login_says_how_to_sign_in(token_file: Path) -> None:
     with pytest.raises(AuthError, match="auth login --client-file"):
-        auth.load_user_credentials(token_file, write=False)
+        auth.load_user_credentials(token_file)
 
 
-@pytest.mark.parametrize(
-    ("scopes", "write", "ok"),
-    [
-        ([READONLY_SCOPE], False, True),
-        ([FULL_SCOPE], False, True),
-        ([FULL_SCOPE], True, True),
-        ([READONLY_SCOPE], True, False),
-        (["https://www.googleapis.com/auth/userinfo.email"], False, False),
-    ],
-)
-def test_scope_check(token_file: Path, scopes: list[str], write: bool, ok: bool) -> None:
+@pytest.mark.parametrize("scopes", [[READONLY_SCOPE], [FULL_SCOPE]])
+def test_loads_read_only_and_full_logins(token_file: Path, scopes: list[str]) -> None:
+    # A read-only login from before full access was the default still serves every read.
     token_file.write_text(token_json(scopes))
-    if ok:
-        assert auth.load_user_credentials(token_file, write=write).refresh_token == "refresh"
-    else:
-        with pytest.raises(AuthError, match="Sign in again"):
-            auth.load_user_credentials(token_file, write=write)
+    assert auth.load_user_credentials(token_file).refresh_token == "refresh"
 
 
-def test_read_only_login_with_writes_enabled_asks_for_write(token_file: Path) -> None:
-    token_file.write_text(token_json([READONLY_SCOPE]))
-    with pytest.raises(AuthError, match="--write"):
-        auth.load_user_credentials(token_file, write=True)
+def test_refuses_a_login_without_search_console_scope(token_file: Path) -> None:
+    token_file.write_text(token_json(["https://www.googleapis.com/auth/userinfo.email"]))
+    with pytest.raises(AuthError, match="Sign in again"):
+        auth.load_user_credentials(token_file)
 
 
 def test_unreadable_login(token_file: Path) -> None:
     token_file.write_text("{not json")
     with pytest.raises(AuthError, match="unreadable"):
-        auth.load_user_credentials(token_file, write=False)
+        auth.load_user_credentials(token_file)
 
 
 def test_missing_service_account_file(tmp_path: Path) -> None:

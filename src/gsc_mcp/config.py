@@ -30,7 +30,7 @@ ENV_DATA_DIR = "GSC_DATA_DIR"
 
 APP_NAME = "open-gsc-mcp"
 _TRUE = {"1", "true", "yes", "on"}
-_FALSE = {"", "0", "false", "no", "off"}
+_FALSE = {"0", "false", "no", "off"}
 _LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 
 
@@ -47,7 +47,7 @@ class Settings:
     oauth_client_file: Path | None = None
     service_account_file: Path | None = None
     token_file: Path | None = None
-    enable_writes: bool = False
+    enable_writes: bool = True
     log_level: LogLevel = "INFO"
     data_dir: Path | None = None
 
@@ -67,7 +67,7 @@ class Settings:
             oauth_client_file=_path(env, ENV_OAUTH_CLIENT_FILE),
             service_account_file=_path(env, ENV_SERVICE_ACCOUNT_FILE),
             token_file=_path(env, ENV_TOKEN_FILE),
-            enable_writes=_flag(env, ENV_ENABLE_WRITES),
+            enable_writes=_flag(env, ENV_ENABLE_WRITES, default=True),
             log_level=_log_level(env),
             data_dir=_path(env, ENV_DATA_DIR),
         )
@@ -89,8 +89,10 @@ def _path(env: Mapping[str, str], name: str) -> Path | None:
     return expand_path(raw, source=name) if raw else None
 
 
-def _flag(env: Mapping[str, str], name: str) -> bool:
+def _flag(env: Mapping[str, str], name: str, *, default: bool) -> bool:
     raw = env.get(name, "").strip().lower()
+    if not raw:
+        return default
     if raw in _TRUE:
         return True
     if raw in _FALSE:

@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Write tools are on by default: `add_site`, `delete_site`, `submit_sitemap` and
+  `delete_sitemap` are always available unless `GSC_ENABLE_WRITES=0`. They keep their
+  write and destructive annotations, so clients ask before running them, and deletes still
+  need the exact property.
+- `auth login` asks for full Search Console access; `--read-only` asks for read access only.
+  `--write` is still accepted.
+- A read-only login keeps working for every read instead of failing when writes are on.
+  Google refuses its changes, and the error says to run `auth login` again.
+
 ## [1.3.0] - 2026-10-15
 
 ### Added

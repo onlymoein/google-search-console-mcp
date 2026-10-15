@@ -28,5 +28,8 @@ already controls your machine or your Google account.
 - OAuth logins are saved to your user config directory with owner-only permissions and are
   never logged. `open-gsc-mcp auth logout` revokes and deletes them.
 - Service account keys are read from the path you configure and are never copied.
-- Logins request the read-only Search Console scope unless writes are enabled.
-- The server only connects to `searchconsole.googleapis.com` and Google's OAuth endpoints.
+- Logins request the full Search Console scope, which the write tools need, unless you
+  sign in with `--read-only` or set `GSC_ENABLE_WRITES=0`.
+- The server connects to `searchconsole.googleapis.com`, Google's OAuth endpoints and
+  Google's public update feed. Indexing audits also fetch the property's own sitemaps and
+  pages, never hosts that resolve to private or local addresses.

@@ -28,11 +28,11 @@
         },
         {
           "name": "GSC_ENABLE_WRITES",
-          "description": "Set to 1 to enable submit/delete sitemap and add/delete site tools.",
+          "description": "Set to 0 to leave out the submit/delete sitemap and add/delete site tools.",
           "isRequired": false,
           "isSecret": false,
           "format": "boolean",
-          "default": "0"
+          "default": "1"
         }
       ]
     }

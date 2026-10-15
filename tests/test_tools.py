@@ -42,13 +42,14 @@ WRITE_TOOLS = {"add_site", "delete_site", "submit_sitemap", "delete_sitemap"}
 # --- Registration ---------------------------------------------------------------------
 
 
-async def test_read_only_by_default(client: Client) -> None:
-    tools = (await client.list_tools()).tools
+async def test_read_only_when_writes_are_off(read_only_client: Client) -> None:
+    tools = (await read_only_client.list_tools()).tools
     assert {t.name for t in tools} == READ_TOOLS
     for tool in tools:
         assert tool.annotations is not None
         assert tool.annotations.read_only_hint is True
         assert tool.output_schema is not None
+    assert "delete_site" not in (read_only_client.instructions or "")
 
 
 @pytest.mark.parametrize("mode", ["legacy", "auto"])
@@ -61,9 +62,10 @@ async def test_no_resources_capability(make_server: Callable[..., MCPServer], mo
         assert capabilities.prompts is not None
 
 
-async def test_write_tools_only_when_enabled(write_client: Client) -> None:
-    tools = {t.name: t for t in (await write_client.list_tools()).tools}
+async def test_every_tool_by_default(client: Client) -> None:
+    tools = {t.name: t for t in (await client.list_tools()).tools}
     assert set(tools) == READ_TOOLS | WRITE_TOOLS
+    assert "get the user's go-ahead" in (client.instructions or "")
     for name in ("delete_site", "delete_sitemap"):
         annotations = tools[name].annotations
         assert annotations is not None
@@ -511,18 +513,18 @@ async def test_get_sitemap_outside_the_property(client: Client) -> None:
 # --- Writes -----------------------------------------------------------------------------
 
 
-async def test_submit_and_delete_sitemap(api: ApiStub, write_client: Client) -> None:
+async def test_submit_and_delete_sitemap(api: ApiStub, client: Client) -> None:
     path = f"{DOMAIN_PATH}/sitemaps/https%3A%2F%2Fexample.com%2Fsitemap.xml"
     api.on("PUT", path, httpx2.Response(204))
     api.on("DELETE", path, httpx2.Response(204))
     submitted = await call(
-        write_client,
+        client,
         "submit_sitemap",
         site_url="sc-domain:example.com",
         sitemap_url="https://example.com/sitemap.xml",
     )
     deleted = await call(
-        write_client,
+        client,
         "delete_sitemap",
         site_url="sc-domain:example.com",
         sitemap_url="https://example.com/sitemap.xml",
@@ -532,33 +534,53 @@ async def test_submit_and_delete_sitemap(api: ApiStub, write_client: Client) -> 
     assert [r.method for r in api.requests if "sitemaps" in str(r.url)] == ["PUT", "DELETE"]
 
 
-async def test_add_site_validates_and_normalizes(api: ApiStub, write_client: Client) -> None:
+async def test_add_site_validates_and_normalizes(api: ApiStub, client: Client) -> None:
     api.on("PUT", "webmasters/v3/sites/https%3A%2F%2Fnew.example.org%2F", httpx2.Response(204))
-    result = await call(write_client, "add_site", site_url="https://new.example.org")
+    result = await call(client, "add_site", site_url="https://new.example.org")
     assert result["site_url"] == "https://new.example.org/"
-    message = await call_error(write_client, "add_site", site_url="new.example.org")
+    message = await call_error(client, "add_site", site_url="new.example.org")
     assert "not a valid property" in message
 
 
-async def test_delete_site_refreshes_the_property_cache(api: ApiStub, write_client: Client) -> None:
+async def test_delete_site_refreshes_the_property_cache(api: ApiStub, client: Client) -> None:
     def listings() -> int:
         return sum(r.url.raw_path.decode() == "/webmasters/v3/sites" for r in api.requests)
 
     api.on("DELETE", DOMAIN_PATH, httpx2.Response(204))
     api.on("GET", f"{DOMAIN_PATH}/sitemaps", {"sitemap": []})
-    await call(write_client, "delete_site", site_url="sc-domain:example.com")
+    await call(client, "delete_site", site_url="sc-domain:example.com")
     before = listings()
-    await call(write_client, "list_sitemaps", site_url="sc-domain:example.com")
+    await call(client, "list_sitemaps", site_url="sc-domain:example.com")
     assert listings() == before + 1
 
 
-async def test_write_tools_refuse_loose_site_names(api: ApiStub, write_client: Client) -> None:
+async def test_a_read_only_login_is_told_how_to_allow_changes(api: ApiStub, client: Client) -> None:
+    api.on(
+        "DELETE",
+        DOMAIN_PATH,
+        httpx2.Response(
+            403,
+            json={
+                "error": {
+                    "code": 403,
+                    "message": "Request had insufficient authentication scopes.",
+                    "status": "PERMISSION_DENIED",
+                }
+            },
+        ),
+    )
+    message = await call_error(client, "delete_site", site_url="sc-domain:example.com")
+    assert "only allows reading" in message
+    assert "open-gsc-mcp auth login" in message
+
+
+async def test_write_tools_refuse_loose_site_names(api: ApiStub, client: Client) -> None:
     for name, extra in (
         ("delete_site", {}),
         ("delete_sitemap", {"sitemap_url": "https://www.example.com/s.xml"}),
         ("submit_sitemap", {"sitemap_url": "https://www.example.com/s.xml"}),
     ):
-        message = await call_error(write_client, name, site_url="www.example.com", **extra)
+        message = await call_error(client, name, site_url="www.example.com", **extra)
         assert "exact site_url" in message
         assert "Did you mean 'sc-domain:example.com'?" in message
     assert all(r.method == "GET" for r in api.requests)

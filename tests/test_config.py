@@ -51,7 +51,7 @@ def test_rejects_relative_paths() -> None:
 
 
 @pytest.mark.parametrize(
-    ("raw", "expected"), [("1", True), ("ON", True), ("0", False), ("", False)]
+    ("raw", "expected"), [("1", True), ("ON", True), ("0", False), ("off", False), ("", True)]
 )
 def test_flags(raw: str, expected: bool) -> None:
     assert Settings.from_env({"GSC_ENABLE_WRITES": raw}).enable_writes is expected

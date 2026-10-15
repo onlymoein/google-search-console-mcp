@@ -46,14 +46,12 @@ LOGIN_HINT = "open-gsc-mcp auth login --client-file /absolute/path/to/client_sec
 
 
 def scopes_for(*, write: bool) -> list[str]:
-    """Least privilege: read-only unless write tools are enabled."""
+    """Full Search Console access, which the write tools need; read-only on request."""
     return [FULL_SCOPE] if write else [READONLY_SCOPE]
 
 
-def has_required_scope(granted: list[str], *, write: bool) -> bool:
-    if FULL_SCOPE in granted:
-        return True
-    return not write and READONLY_SCOPE in granted
+def can_write(granted: list[str]) -> bool:
+    return FULL_SCOPE in granted
 
 
 class TokenSource(Protocol):
@@ -101,9 +99,7 @@ class GoogleTokenSource:
             return load_service_account(
                 self._settings.service_account_file, write=self._settings.enable_writes
             )
-        return load_user_credentials(
-            self._settings.resolved_token_file, write=self._settings.enable_writes
-        )
+        return load_user_credentials(self._settings.resolved_token_file)
 
     def _refresh(self, credentials: Credentials) -> None:
         try:
@@ -132,7 +128,9 @@ def load_service_account(path: Path, *, write: bool) -> Credentials:
         ) from exc
 
 
-def load_user_credentials(path: Path, *, write: bool) -> UserCredentials:
+def load_user_credentials(path: Path) -> UserCredentials:
+    """A saved login with either Search Console scope. A read-only one still serves every
+    read; Google refuses its writes, and the client explains how to sign in again."""
     if not path.is_file():
         raise AuthError(
             "Not signed in to Google Search Console. In a terminal, run:\n"
@@ -147,12 +145,7 @@ def load_user_credentials(path: Path, *, write: bool) -> UserCredentials:
             f"The saved login at {path} is unreadable ({exc}). Sign in again:\n  {LOGIN_HINT}"
         ) from exc
     granted = list(credentials.scopes or [])
-    if not has_required_scope(granted, write=write):
-        if write:
-            raise AuthError(
-                "GSC_ENABLE_WRITES is on, but the saved login only grants read-only access. "
-                f"Sign in again with write access:\n  {LOGIN_HINT} --write"
-            )
+    if READONLY_SCOPE not in granted and not can_write(granted):
         raise AuthError(
             f"The saved login has no Search Console scope. Sign in again:\n  {LOGIN_HINT}"
         )
@@ -180,7 +173,7 @@ def explain_refresh_error(exc: RefreshError, *, service_account: Path | None) ->
 
 
 def login(
-    client_file: Path, token_file: Path, *, write: bool, open_browser: bool = True
+    client_file: Path, token_file: Path, *, write: bool = True, open_browser: bool = True
 ) -> UserCredentials:
     """Run the OAuth desktop flow in the terminal and save the refresh token."""
     from google_auth_oauthlib.flow import InstalledAppFlow

@@ -34,6 +34,11 @@ EXPECTED = {
     "batch_inspect_urls",
     "list_sitemaps",
     "get_sitemap",
+    # Write tools, on by default.
+    "add_site",
+    "delete_site",
+    "submit_sitemap",
+    "delete_sitemap",
 }
 
 

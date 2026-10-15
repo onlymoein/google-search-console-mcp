@@ -33,8 +33,10 @@ during an indexing audit. It stores your login and your audits' progress, nothin
   lists, so `audit_indexing` rebuilds them: it inspects every sitemap URL within the daily
   quota, carries on where it stopped the next day, and can check each live page against
   what Google last saw.
-- **Read-only by default.** Write tools do not exist unless you turn them on, and the login
-  only asks Google for read-only access unless you need more.
+- **Everything the API can do, with guard rails.** Reads and writes are both on: it can add
+  and remove properties and submit and remove sitemaps. Tools that change things are marked
+  as such (deletes as destructive), so clients ask before running them, and deletes need
+  the property's exact name. Turn writes off with `GSC_ENABLE_WRITES=0`.
 - **Structured output.** Every tool declares an output schema, rows come back as named
   fields, and every analytics result includes the exact request sent to Google.
 - **Full API coverage**: search analytics (all search types, filters, data states,
@@ -150,9 +152,11 @@ When `GSC_SERVICE_ACCOUNT_FILE` is set it takes precedence over any OAuth login.
 `query_news_analytics` from 1.1.0 is deprecated: calls still work and go to the new news
 tool its `source` selects, until it is removed in 2.0.0.
 
-With `GSC_ENABLE_WRITES=1` four more tools appear: `submit_sitemap`, `delete_sitemap`,
-`add_site` and `delete_site`. They are annotated as writes (deletes as destructive), so
-well-behaved clients ask before running them.
+Four tools make changes: `submit_sitemap`, `delete_sitemap`, `add_site` and `delete_site`.
+They are annotated as writes (deletes as destructive), so well-behaved clients ask before
+running them, and they accept only a property's exact `site_url`. These four are every
+change Google's API allows: it cannot request indexing, remove URLs from search, or
+manage users and settings. Set `GSC_ENABLE_WRITES=0` for a server without them.
 
 Sites can be given as `sc-domain:example.com`, `https://www.example.com/`, a bare
 `example.com`, or any URL on the site. Anything but the exact property is resolved against
@@ -175,7 +179,7 @@ the results.
 | `GSC_SERVICE_ACCOUNT_FILE` | unset | Service account key; when set, it is used instead of OAuth. |
 | `GSC_OAUTH_CLIENT_FILE` | unset | OAuth client JSON, so `auth login` needs no `--client-file`. |
 | `GSC_TOKEN_FILE` | per-user config dir | Where `auth login` saves the login (mode 0600). |
-| `GSC_ENABLE_WRITES` | `0` | Register the four write tools. Needs a login with write access: `auth login --write`. |
+| `GSC_ENABLE_WRITES` | `1` | Set to `0` to leave out the four tools that make changes; `auth login` then asks only for read access. |
 | `GSC_LOG_LEVEL` | `INFO` | `DEBUG` also logs every HTTP request. Logs go to stderr. |
 | `GSC_DATA_DIR` | per-user data dir | Where indexing audits keep their progress (one SQLite file, owner-only). |
 
@@ -183,7 +187,7 @@ Command line:
 
 ```sh
 uvx open-gsc-mcp@latest              # run the MCP server over stdio (what clients do)
-uvx open-gsc-mcp@latest auth login   # sign in; --write for write access, --no-browser over SSH
+uvx open-gsc-mcp@latest auth login   # sign in; --read-only to grant reads only, --no-browser over SSH
 uvx open-gsc-mcp@latest auth status  # which credentials are used, and do they work
 uvx open-gsc-mcp@latest auth logout  # revoke and delete the saved login
 uvx open-gsc-mcp@latest audit SITE   # inspect up to a day's 2,000 sitemap URLs; --fetch-pages
@@ -219,7 +223,9 @@ branded query filter, Core Web Vitals, manual actions and links.
 - **"Not signed in"**: run `uvx open-gsc-mcp@latest auth login --client-file ...`, or set
   `GSC_SERVICE_ACCOUNT_FILE`.
 - **No properties, or 403 for a service account**: add the service account's email as a user
-  on the property in Search Console.
+  on the property in Search Console. Changes also need Owner or Full permission there.
+- **"Your Google login only allows reading"**: you signed in before full access was the
+  default, or with `--read-only`. Run `auth login` again to allow changes.
 - **Empty results**: check the date range (Pacific Time; `final` data lags 2-3 days), the
   `search_type`, and filters. Each result's `notes` and `request` show what was asked.
 - **Check the setup end to end**: `uvx open-gsc-mcp@latest auth status`.
@@ -236,7 +242,8 @@ branded query filter, Core Web Vitals, manual actions and links.
   directory (`GSC_DATA_DIR`), readable only by you.
 - The OAuth login is stored in your user config directory with owner-only permissions.
   `auth logout` revokes it at Google and deletes it.
-- Logins request read-only access unless writes are enabled.
+- Logins ask Google for full Search Console access, which the write tools need. Use
+  `auth login --read-only` (or `GSC_ENABLE_WRITES=0`) to grant read access only.
 - Query and page strings come from searchers and other websites. The server tells the model
   to treat them as data, not instructions.
 

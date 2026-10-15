@@ -136,7 +136,7 @@ def web() -> WebStub:
 
 @pytest.fixture
 def make_server(gsc: SearchConsoleClient, web: WebStub, tmp_path: Path) -> Callable[..., MCPServer]:
-    def make(*, enable_writes: bool = False) -> MCPServer:
+    def make(*, enable_writes: bool = True) -> MCPServer:
         return build_server(
             Settings(enable_writes=enable_writes, data_dir=tmp_path / "data"),
             client=gsc,
@@ -154,8 +154,8 @@ async def client(make_server: Callable[..., MCPServer]) -> AsyncIterator[Client]
 
 
 @pytest.fixture
-async def write_client(make_server: Callable[..., MCPServer]) -> AsyncIterator[Client]:
-    async with Client(make_server(enable_writes=True), raise_exceptions=True) as connected:
+async def read_only_client(make_server: Callable[..., MCPServer]) -> AsyncIterator[Client]:
+    async with Client(make_server(enable_writes=False), raise_exceptions=True) as connected:
         yield connected
 
 

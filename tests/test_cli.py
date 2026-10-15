@@ -5,7 +5,7 @@ from pathlib import Path
 import httpx2
 import pytest
 
-from gsc_mcp import __version__, auth, server
+from gsc_mcp import __version__, auth, cli, server
 from gsc_mcp.cli import main
 from gsc_mcp.client import SearchConsoleClient
 from gsc_mcp.config import Settings
@@ -66,6 +66,40 @@ def test_login_is_pointless_with_a_service_account(
     monkeypatch.setenv("GSC_SERVICE_ACCOUNT_FILE", str(tmp_path / "key.json"))
     assert run("auth", "login") == 1
     assert "service account" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("flags", "env", "write"),
+    [
+        ((), {}, True),
+        (("--read-only",), {}, False),
+        (("--write",), {}, True),
+        ((), {"GSC_ENABLE_WRITES": "0"}, False),
+    ],
+)
+def test_login_asks_for_full_access_unless_told_otherwise(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    flags: tuple[str, ...],
+    env: dict[str, str],
+    write: bool,
+) -> None:
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    client_file = tmp_path / "client.json"
+    client_file.write_text("{}")
+    asked: list[bool] = []
+
+    def login(client: Path, token: Path, *, write: bool, open_browser: bool) -> None:
+        asked.append(write)
+
+    def check_access(settings: Settings) -> int:
+        return 0
+
+    monkeypatch.setattr(auth, "login", login)
+    monkeypatch.setattr(cli, "_check_access", check_access)
+    assert run("auth", "login", "--client-file", str(client_file), *flags) == 0
+    assert asked == [write]
 
 
 def test_logout_without_login(capsys: pytest.CaptureFixture[str]) -> None:
